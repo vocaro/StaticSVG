@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "name": "StaticSVG",
+  "repository": "vocaro/StaticSVG",
+  "toolkit": {
+    "path": "../apple-engineering"
+  },
+  "capabilities": [
+    "simulator-disposable",
+    "measurement",
+    "packaging"
+  ],
+  "lanes": {
+    "docs": {
+      "command": [
+        "python3",
+        "scripts/eng",
+        "docs",
+        "check"
+      ],
+      "resource": "light"
+    }
+  },
+  "exceptions": [],
+  "integration": "pull-request"
+}
