@@ -51,8 +51,16 @@ original=...   # the build directory the release notes give
 STATICSVG_RESVG_BUILD_DIR=$work STATICSVG_RESVG_OUTPUT=$work/out/Resvg.xcframework \
 RUSTFLAGS="--remap-path-prefix=$work=$original" \
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bash scripts/build-resvg.sh
-python3 scripts/verify-resvg.py "$work/out/Resvg.xcframework"
+python3 scripts/compare-resvg.py Resvg/Resvg.xcframework "$work/out/Resvg.xcframework"
 ```
+
+`scripts/compare-resvg.py` compares the two frameworks object by object. Since 0.1.1 the
+standard library is built from source, and cargo puts a hash that depends on `RUSTFLAGS` in the
+name of its `compiler_builtins` unit, so the remapped rebuild names that archive member, and
+therefore the archive's symbol table, differently, and the library checksums differ though
+every object is the same. The script matches members with that hash left out and compares their
+contents. For 0.1.0, whose standard library was Rust's prebuilt one, the libraries themselves
+matched `Resvg/checksums.json`.
 
 The results of that check for each release are recorded on its issue: for 0.1.0 and 0.1.1,
 [vocaro/EPUBLib#636](https://github.com/vocaro/EPUBLib/issues/636). A later release can set a
