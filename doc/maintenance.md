@@ -14,8 +14,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bash scripts/build-resv
 
 The script downloads the pinned resvg source archive and the tiny-skia 0.12.0 crate and checks
 their SHA-256, applies `scripts/patch-resvg.py` (which applies `scripts/resvg-panic-boundary.py`),
-downloads an isolated Rust 1.95.0 toolchain under the build directory, builds the five Apple
-targets, assembles `Resvg/Resvg.xcframework`, and regenerates `Resvg/dependencies.json`,
+downloads an isolated Rust 1.95.0 toolchain and its library source under the build directory,
+builds the standard library from that source without backtraces and the five Apple targets, assembles `Resvg/Resvg.xcframework`, and regenerates `Resvg/dependencies.json`,
 `Resvg/Licenses/` and `Resvg/checksums.json`. An existing framework is moved aside into the build
 directory, not deleted. The developer's own Rust installation, Cargo registry and settings are
 not used or changed. `STATICSVG_RESVG_BUILD_DIR` (default `.build/resvg`) and
@@ -33,28 +33,28 @@ STATICSVG_LOCAL_RESVG=1 swift test
 A released framework can be put back in place for that from its asset:
 
 ```sh
-curl -L -o Resvg/Resvg.xcframework.zip https://github.com/vocaro/StaticSVG/releases/download/0.1.0/Resvg.xcframework.zip
+curl -L -o Resvg/Resvg.xcframework.zip https://github.com/vocaro/StaticSVG/releases/download/0.1.1/Resvg.xcframework.zip
 ditto -x -k Resvg/Resvg.xcframework.zip Resvg
 python3 scripts/verify-resvg.py
 ```
 
 ### Reproducing a released binary
 
-Rust records the absolute paths of the sources it compiles in the panic locations it embeds, so
-a library built in another directory differs from a released one by those strings even when
-every input is the same. The 0.1.0 libraries were built by EPUBLib's copy of this script at
-`/Users/trevorharmon/.codex/worktrees/priority-renderer-panics/EPUBLib/.build/resvg`. Mapping a
-build directory onto that path reproduces them:
+Rust records the absolute paths of the sources it compiles in the panic locations it embeds, the
+standard library's own included, so a library built in another directory differs from a
+released one by those strings even when every input is the same. Each release's notes give the
+directory its libraries were built in; mapping a build directory onto it reproduces them:
 
 ```sh
 work=$PWD/.build/resvg-check
+original=...   # the build directory the release notes give
 STATICSVG_RESVG_BUILD_DIR=$work STATICSVG_RESVG_OUTPUT=$work/out/Resvg.xcframework \
-RUSTFLAGS="--remap-path-prefix=$work=/Users/trevorharmon/.codex/worktrees/priority-renderer-panics/EPUBLib/.build/resvg" \
+RUSTFLAGS="--remap-path-prefix=$work=$original" \
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bash scripts/build-resvg.sh
 python3 scripts/verify-resvg.py "$work/out/Resvg.xcframework"
 ```
 
-The result of that check for 0.1.0 is recorded on
+The results of that check for each release are recorded on its issue: for 0.1.0 and 0.1.1,
 [vocaro/EPUBLib#636](https://github.com/vocaro/EPUBLib/issues/636). A later release can set a
 neutral prefix in the script itself, which changes the libraries once.
 
@@ -68,8 +68,10 @@ python3 scripts/verify-resvg.py [path/to/Resvg.xcframework]
 ```
 
 checks each library's SHA-256 against `Resvg/checksums.json`, that the framework has the iOS
-device (arm64), iOS simulator (arm64, x86_64) and macOS (arm64, x86_64) slices, and that the
-three share one patched header. A rebuild that changes a library changes `checksums.json` with
+device (arm64), iOS simulator (arm64, x86_64) and macOS (arm64, x86_64) slices, that the
+three share one patched header, and that no slice imports an API Apple requires an app to give a
+reason for in its privacy manifest (system boot time, file timestamps, disk space, active
+keyboards, user defaults). A rebuild that changes a library changes `checksums.json` with
 it; the diff then shows which.
 
 ## Releasing

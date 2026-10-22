@@ -59,7 +59,8 @@ cite the lines.
 
 | Need | Upstream 0.48.1 | StaticSVG |
 |---|---|---|
-| Refuse file reads for `<image>` | Rust hook exists; the C API exposes none, and its default string resolver reads files | Patch: the C API's options close the string resolver and allow PNG, JPEG, GIF and WebP `data:` only, never nested SVG (`scripts/patch-resvg.py`) |
+| Refuse file reads for `<image>` | Rust hook exists; the C API exposes none, and its default string resolver reads files | Patch: the C API's options close the string resolver, usvg's default one included, and allow PNG, JPEG, GIF and WebP `data:` only, never nested SVG; `resvg_parse_tree_from_file` opens no file (`scripts/patch-resvg.py`) |
+| Nothing an app must declare | The standard library's backtrace symbolizer and file reads call `fstat` and `stat`, file timestamp APIs an app declares in its privacy manifest | Build: the standard library is built without backtraces, and no file is read ([EPUBLib#685](https://github.com/vocaro/EPUBLib/issues/685)); `scripts/verify-resvg.py` checks each slice |
 | Supply image bytes | Not through the C API | Policy: images are prepared in Swift through `SVGResourceProvider` and inlined as PNG |
 | No filesystem font methods | The C API gates them on `text` instead of `system-fonts` | Patch: gate on `system-fonts`, which the build leaves off |
 | Survive a panic | No `catch_unwind`; since Rust 1.81 a panic leaving an `extern "C"` function aborts the process | Patch: every parse, query and render entry point catches unwinds, and a tree that panicked is disposed of ([renderer](renderer.md#patches)); tiny-skia's antialias `Drop` is guarded so unwinding cannot panic twice |

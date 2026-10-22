@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.1.1 — 2026-10-22
+
+The renderer EPUBLib moved to after 0.1.0 was cut, as a release of its own: resvg reads no file
+and is built without backtraces, so an app that links it has no required-reason API to declare for it
+in its privacy manifest ([vocaro/EPUBLib#685](https://github.com/vocaro/EPUBLib/issues/685),
+[vocaro/EPUBLib#728](https://github.com/vocaro/EPUBLib/pull/728)). 0.1.0's library imports
+`stat` and `fstat`.
+
+- `resvg_parse_tree_from_file` opens no file, and usvg's default image resolver, which
+  `Options::default()` builds before the resource policy replaces it, reads no path.
+- The standard library is built from Rust 1.95.0's own source without its `backtrace` feature;
+  the framework is 19 MiB, from 45. Library checksums are in
+  [Resvg/checksums.json](Resvg/checksums.json).
+- `scripts/verify-resvg.py` reads each slice for an API Apple requires a reason for.
+
 ## 0.1.0 — 2026-10-21
 
 The first release: EPUBLib's static SVG pipeline as a package of its own

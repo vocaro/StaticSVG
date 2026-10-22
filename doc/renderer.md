@@ -8,8 +8,14 @@ The source tarball SHA-256 is
 `Resvg.xcframework` contains static macOS arm64/x86_64, iOS arm64, and iOS simulator
 arm64/x86_64 libraries, built with isolated Rust 1.95.0 and the upstream production profile
 (`opt-level=3`, LTO, one codegen unit, stripped debug information), with `panic = "unwind"`
-explicitly set so boundary catches can run. Features: `text,raster-images`; filesystem font
-scanning, font memory mapping and SVGZ are disabled. A release distributes the framework as its
+explicitly set so boundary catches can run. Rust's standard library is built with it from the
+toolchain's own 1.95.0 source (`-Zbuild-std`, which `RUSTC_BOOTSTRAP=1` enables on the stable
+compiler) without its `backtrace` feature, whose symbolizer reads the executable with `fstat`.
+Apple counts that, and the `stat` and `fstat` of a file read, as file timestamp APIs an app has
+to declare in its privacy manifest; the library calls none of the APIs Apple requires a reason
+for ([EPUBLib#685](https://github.com/vocaro/EPUBLib/issues/685)), and
+`scripts/verify-resvg.py` reads each slice for one. Features: `text,raster-images`; filesystem
+font scanning, font memory mapping and SVGZ are disabled. A release distributes the framework as its
 `Resvg.xcframework.zip` asset, which `Package.swift` pins by checksum, so a consumer needs no
 Rust. Only the `StaticSVG` target links the `CResvg` module it provides. The library's build
 deployment targets are macOS 11.0 and iOS 10.0 (Rust's Apple defaults); StaticSVG itself
@@ -18,7 +24,8 @@ requires iOS and macOS 27. [Maintenance](maintenance.md) says how to rebuild and
 ## Patches
 
 The resource-policy changes, in `scripts/patch-resvg.py`, close every non-data image resolver,
-allow raster data types only (PNG, JPEG, GIF and WebP, never nested SVG or SVGZ), and fix the C
+usvg's default one too, which `Options::default()` builds before the policy replaces it, make
+`resvg_parse_tree_from_file` open no file, allow raster data types only (PNG, JPEG, GIF and WebP, never nested SVG or SVGZ), and fix the C
 API's feature gates so the filesystem font methods compile to no-ops. Fonts are supplied as
 host-exported CoreText SFNT outline bytes (`SVGFontData.export`), with SVG, COLR, bitmap and other
 color-glyph tables removed; `SVGFontData.strippedColorGlyphs` and `SVGDiagnostics.Kind.colorGlyphs`
@@ -40,7 +47,7 @@ archive with its Cargo.lock SHA-256 and uses an isolated path patch; it never mo
 registry cache.
 
 The default Rust panic hook is deliberately unchanged: caught panic diagnostics still go to
-stderr. There is no process-global hook replacement that could silence a host's own Rust panics.
+stderr, with no backtrace, which the standard library is built without. There is no process-global hook replacement that could silence a host's own Rust panics.
 StaticSVG never invokes `resvg_init_log`.
 
 ## What is screened before the renderer runs
@@ -86,7 +93,8 @@ capacity bound, not a prediction of panics. None of this is an operating-system 
 
 ## Notices
 
-The XCFramework is about 45 MiB before compression. `Resvg/checksums.json` records the library
+The XCFramework is about 19 MiB before compression; it was 45 MiB, in 0.1.0, before the
+standard library was built with the production profile and without backtraces. `Resvg/checksums.json` records the library
 hashes, `Resvg/dependencies.json` identifies the locked normal dependency graph, and
 `Resvg/Licenses/` contains their complete license and notice texts, plus Rust's standard-library
 copyright and third-party notices. An application redistributing this static code must retain
