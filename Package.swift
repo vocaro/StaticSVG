@@ -7,8 +7,8 @@ import PackageDescription
 let resvg: Target = Context.environment["STATICSVG_LOCAL_RESVG"] == "1"
     ? .binaryTarget(name: "CResvg", path: "Resvg/Resvg.xcframework")
     : .binaryTarget(name: "CResvg",
-                    url: "https://github.com/vocaro/StaticSVG/releases/download/0.1.0/Resvg.xcframework.zip",
-                    checksum: "c13ea52db20c8d6a6497b3398f3806a120598c3f8013798f51926ca413f6956e")
+                    url: "https://github.com/vocaro/StaticSVG/releases/download/0.1.1/Resvg.xcframework.zip",
+                    checksum: "05106de42f7b84c85116ef34d2daf7779ae0c41106ae95e8d161738e964a0ae0")
 
 let package = Package(
     name: "StaticSVG",
