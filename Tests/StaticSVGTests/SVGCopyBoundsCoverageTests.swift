@@ -439,11 +439,13 @@ final class SVGCopyBoundsCoverageTests: XCTestCase {
     /// screened, as they must not be. From a chain of forty ids the lookup that takes no step
     /// would not return, and the one that takes them would go on to the whole screen
     /// (`isWithinLimits`), whose budget is the real one, a million steps, which took it nearly
-    /// three minutes in one of these tests. The two tests after this one screen shared ids too,
-    /// and begin the same way.
+    /// three minutes in one of these tests. Past that first assertion a failure no longer ends
+    /// the test, so that each later one is reported. The two tests after this one screen shared
+    /// ids too, and begin the same way.
     func testGradientsThatShareIdsAreEachReadOnce() throws {
         continueAfterFailure = false
         XCTAssertEqual(verdict(chain(10, shared: 2), stepBudget: 1_000).steps, 22, "each gradient read once, for one step")
+        continueAfterFailure = true
         for (levels, shared) in [(20, 2), (12, 3), (40, 2), (64, 4)] {
             let drawing = chain(levels, shared: shared)
             let result = verdict(drawing, stepBudget: 1_000)
@@ -467,6 +469,7 @@ final class SVGCopyBoundsCoverageTests: XCTestCase {
         // no step would not return from the two gradients below.
         continueAfterFailure = false
         XCTAssertEqual(verdict(chain(10, shared: 2), stepBudget: 1_000).steps, 22, "each gradient read once, for one step")
+        continueAfterFailure = true
         let rect = "<rect width='1' height='1' fill='url(#a)'/>"
         var result = verdict(svg(String(repeating: "<linearGradient id='a' href='#a'/>", count: 2), rect), stepBudget: 1_000)
         XCTAssertTrue(result.withinLimits)
@@ -490,6 +493,7 @@ final class SVGCopyBoundsCoverageTests: XCTestCase {
         // no step would not return from the chain of forty ids below.
         continueAfterFailure = false
         XCTAssertEqual(verdict(chain(10, shared: 2), stepBudget: 1_000).steps, 22, "each gradient read once, for one step")
+        continueAfterFailure = true
         // Forty ids, two gradients to each, and where the chain ends a gradient of 2,048 stops: the
         // renderer paints every rect with those.
         func drawing(_ rects: Int) -> String { chain(40, shared: 2, tail: gradient("g40", stops: 2_048), rects: rects) }
@@ -592,7 +596,8 @@ final class SVGCopyBoundsCoverageTests: XCTestCase {
     /// It was once found again for each declaration whose name ends in `dasharray`, so the screen
     /// read the attribute once for each: 4,000 of them, 40 KB, took it five seconds, and 20,000
     /// two minutes. It is now found once, in a reading that is charged, and the charge is what the
-    /// steps asserted here pin: five readings of the attribute, whatever it declares.
+    /// steps asserted here pin: five readings of an attribute that declares a dash array, as each
+    /// here does. One that declares none is read four times (`testEveryReadingOfCSSIsCharged`).
     ///
     /// The scan as it was, made for each declaration and charged for none, fails on that count,
     /// four readings where five are asserted. It takes no step, so no budget stops it: it fails
@@ -612,7 +617,7 @@ final class SVGCopyBoundsCoverageTests: XCTestCase {
                 let result = verdict(drawing, stepBudget: 4_000)
                 XCTAssertTrue(result.withinLimits, "\(count) of `\(declaration)`")
                 XCTAssertEqual(result.copies, longest ?? bytes, "the path's dash array is bounded by the longest declaration, as it was")
-                XCTAssertEqual(result.steps, 2 + 5 * bytes / 64, "the root and the path, and five readings of the \(bytes) bytes whatever they declare")
+                XCTAssertEqual(result.steps, 2 + 5 * bytes / 64, "the root and the path, and five readings of the \(bytes) bytes, which declare dash arrays")
                 XCTAssertTrue(isWithinLimits(drawing), "the whole screen passes it, as it did before the copies were counted")
             }
         }
@@ -695,6 +700,17 @@ final class SVGCopyBoundsCoverageTests: XCTestCase {
         XCTAssertEqual(result.copies, 64 * 20, "each rect drawn is charged the group's longest declaration, `stroke-dasharray:1 2`")
         XCTAssertEqual(result.steps, 1 + 64 * 4 + 5 * 1_344 / 64,
                        "the root; for each use the use, the reference it follows, the group and the rect; and the five readings, made once")
+
+        // What is kept is each element's own. Beside a second group of another style, drawn as
+        // often, each group's rects are charged that group's longest declaration: were every
+        // group kept under the first one's entry, the second's would be charged the first's
+        // (EPUBLib#415).
+        let other = String(repeating: "stroke-dasharray:1 2 3 4;", count: 8)
+        let two = svg("<g id='u' style='\(style)'><rect width='1' height='1'/></g><g id='v' style='\(other)'><rect width='1' height='1'/></g>",
+                      String(repeating: "<use xlink:href='#u'/>", count: 64) + String(repeating: "<use xlink:href='#v'/>", count: 64))
+        let both = verdict(two, stepBudget: 1_000)
+        XCTAssertTrue(both.withinLimits)
+        XCTAssertEqual(both.copies, 64 * 20 + 64 * 24, "`stroke-dasharray:1 2` for the first group's rects, `stroke-dasharray:1 2 3 4` for the second's")
     }
 
     /// The walk of a `<use>` tree takes a step for each element it visits and each reference it

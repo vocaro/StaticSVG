@@ -1125,16 +1125,16 @@ enum SVGContent {
         }
 
         /// Where a value that runs to the end of the text ends once its trailing white space is
-        /// dropped, and no earlier than `low`. A comment or a string that nothing closes runs to
-        /// the end of the text from every range that opens one.
-        mutating func endOfValue(_ bytes: [UInt8], from low: Int) -> Int {
-            if tail == nil {
-                var start = bytes.count
-                while start > 0, bytes[start - 1] <= 0x20 { start -= 1 }
-                tail = start
-                bytesRead += bytes.count - start
-            }
-            return max(low, tail ?? low)
+        /// dropped. A comment or a string that nothing closes runs to the end of the text from
+        /// every range that opens one. The value begins with a byte that is not white space, so
+        /// it ends after it begins.
+        mutating func endOfValue(_ bytes: [UInt8]) -> Int {
+            if let tail { return tail }
+            var start = bytes.count
+            while start > 0, bytes[start - 1] <= 0x20 { start -= 1 }
+            tail = start
+            bytesRead += bytes.count - start
+            return start
         }
     }
 
@@ -1216,7 +1216,7 @@ enum SVGContent {
             }
             var low = valueStart, high = index
             while low < high, bytes[low] <= 0x20 { low += 1 }
-            if low < high, high == bytes.count { high = scan.endOfValue(bytes, from: low) }
+            if low < high, high == bytes.count { high = scan.endOfValue(bytes) }
             else { while high > low, bytes[high - 1] <= 0x20 { high -= 1 } }
             if !name.isEmpty {
                 body(name, high - low)
