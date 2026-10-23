@@ -22,5 +22,5 @@
     }
   },
   "exceptions": [],
-  "integration": "pull-request"
+  "integration": "direct-main"
 }
