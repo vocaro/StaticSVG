@@ -31,7 +31,7 @@ final class SVGRasterCostCoverageTests: XCTestCase {
             String(repeating: "<use href='#s' width='400' height='60'/>", count: 100)))
         XCTAssertGreaterThanOrEqual(SVGContent.isolatedLayers(symbols.root), 100,
             "a used symbol also creates a clipped viewport layer")
-        // This is a harmless neighbour with the same layer count. The hostile geometry above
+        // This is a harmless neighbor with the same layer count. The hostile geometry above
         // is checked without decoding; this one verifies the production resolution choice.
         let safe = svg(String(repeating: nested.replacingOccurrences(of: "40000", with: "400").replacingOccurrences(of: "6000", with: "60"), count: 100))
         let source = try XCTUnwrap(SVGImageSource.svg(Data(safe.utf8)))

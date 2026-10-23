@@ -18,7 +18,7 @@ final class SVGFontSizeCostTests: XCTestCase {
         SVGContent.isWithinRenderingLimits(try root(body))
     }
 
-    func testOriginalPaddedDashReproducerAndPassingNeighbour() throws {
+    func testOriginalPaddedDashReproducerAndPassingNeighbor() throws {
         let dash = Array(repeating: "1em", count: 20_000).joined(separator: " ")
         let tail = "'><path d='M0 0h50' stroke='black' stroke-dasharray='\(dash)'/></g>"
         let plain = "<g font-size='12" + tail
@@ -64,7 +64,7 @@ final class SVGFontSizeCostTests: XCTestCase {
     func testRendererPropertyNameSyntaxCannotBypassFontSizeCap() throws {
         let size = "12." + String(repeating: "0", count: 100_000)
         let ordinary = "12." + String(repeating: "0", count: 61)
-        for (property, value, neighbour) in [("font-size", size, ordinary),
+        for (property, value, neighbor) in [("font-size", size, ordinary),
                                            ("font", "italic 500 " + size + " serif", "italic 500 " + ordinary + " serif")] {
             for spelling in [property, property.uppercased(), property.prefix(1).uppercased() + property.dropFirst()] {
                 for name in [spelling, "*" + spelling, spelling + "/**/", "*" + spelling + "/**/",
@@ -73,7 +73,7 @@ final class SVGFontSizeCostTests: XCTestCase {
                         let declaration = name + ":" + prefix + value
                         XCTAssertFalse(try accepts("<g style='\(declaration)'>\(path)</g>"), declaration.prefix(80).description)
                         XCTAssertFalse(try accepts("<style>g{\(declaration)}</style><g>\(path)</g>"), declaration.prefix(80).description)
-                        let plain = name + ":" + prefix + neighbour
+                        let plain = name + ":" + prefix + neighbor
                         XCTAssertTrue(try accepts("<g style='\(plain)'>\(path)</g>"), plain)
                         XCTAssertTrue(try accepts("<style>g{\(plain)}</style><g>\(path)</g>"), plain)
                     }

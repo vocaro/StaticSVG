@@ -282,7 +282,7 @@ enum SVGContent {
     /// size of the largest marker each marker property could name, whether its fill or stroke names
     /// a paint server, and the bytes of its dash array. One element's declaration only ever raises
     /// what another's set, never lowers it: a shape is charged the most that it or any ancestor
-    /// asks for, so a declaration the renderer ignores cannot hide one that it honours.
+    /// asks for, so a declaration the renderer ignores cannot hide one that it honors.
     private struct Inherited {
         var start = 0, mid = 0, end = 0
         var paintServer = false
@@ -308,7 +308,7 @@ enum SVGContent {
     }
 
     /// Whether the renderer's marker expansion stays within `maximumMarkerInstances`. The renderer
-    /// is not modelled. Markers are counted in the few forms a diagram uses, and an SVG that uses
+    /// is not modeled. Markers are counted in the few forms a diagram uses, and an SVG that uses
     /// them in any other form is refused:
     ///
     ///  1. No stylesheet holds a `url(#…)`: a stylesheet names no marker, and nothing a marker or a
@@ -500,7 +500,7 @@ enum SVGContent {
     /// gradient its fill or stroke could name, the bytes of its dash array, the bytes of the
     /// `font-family` and `font-variation-settings` a `<text>` copies per span, and the bytes of the
     /// inherited presentation values the renderer re-parses for every shape. One element only ever
-    /// raises what another sets — a declaration the renderer ignores cannot hide one it honours —
+    /// raises what another sets — a declaration the renderer ignores cannot hide one it honors —
     /// except `reparseBytes`, which sums down the chain: the renderer re-parses the nearest ancestor
     /// of each inherited property per shape, so distinct long values on distinct ancestors add up.
     private struct Copied {
@@ -525,7 +525,7 @@ enum SVGContent {
     }
 
     /// Whether what the renderer copies per painted shape stays within `maximumSharedCopies`. The
-    /// renderer is not modelled; each shape is charged the most that it or any ancestor, through
+    /// renderer is not modeled; each shape is charged the most that it or any ancestor, through
     /// every `<use>` that draws it, could ask for, so the count never falls below what the renderer
     /// does, except for a stylesheet's declarations, which rule 4 charges only in part. For a shape
     /// the markers do not count here:

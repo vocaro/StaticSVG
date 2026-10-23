@@ -62,7 +62,7 @@ final class SVGCopyBoundsCoverageTests: XCTestCase {
         XCTAssertEqual(copies("<g fill='url(#g)'><g><rect width='1' height='1'/></g></g>"), 3, "inherited from an ancestor")
         XCTAssertEqual(copies("<rect width='1' height='1' style='fill:url(#g)'/>"), 6,
                        "a style paint names fill or stroke indistinguishably, so both are charged")
-        XCTAssertEqual(copies("<rect width='1' height='1' fill='red'/>"), 0, "a plain colour copies nothing")
+        XCTAssertEqual(copies("<rect width='1' height='1' fill='red'/>"), 0, "a plain color copies nothing")
         XCTAssertEqual(copies("<rect width='1' height='1'/>"), 0, "and the default fill nothing")
 
         // Through a gradient `href` chain, the stops of the first gradient that holds them.
@@ -87,7 +87,7 @@ final class SVGCopyBoundsCoverageTests: XCTestCase {
     }
 
     /// The stops counted are exactly what the renderer copies: a gradient painting shapes past the
-    /// bound is refused, its neighbour one shape fewer renders.
+    /// bound is refused, its neighbor one shape fewer renders.
     func testStopsAtTheBound() throws {
         XCTAssertEqual(SVGContent.maximumSharedCopies, 8 * 1024 * 1024)
         // 2,048 stops copied for each of 4,096 rects is exactly the bound.

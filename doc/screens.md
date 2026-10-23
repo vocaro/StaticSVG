@@ -19,7 +19,7 @@ again wherever a `<use>` or a mask/clip reference expands it. This counts Rust's
 clusters. An SVG that holds a `<tref>`, which SVG 2 removed and which draws
 text from elsewhere in the document into a run, is refused. Markers, whose content the
 renderer builds again at every vertex they are drawn at, are counted in the forms diagrams
-use and refused in any other, rather than modelled.
+use and refused in any other, rather than modeled.
 - Supported: `marker-start`, `marker-mid` and `marker-end` as attributes, or those and
   `marker` in a `style` attribute, on a shape or on a group around it, a `<use>` of it
   included; and a `<marker>` that holds only `path`, `line`, `polyline`, `polygon`, `rect`,

@@ -44,7 +44,7 @@ enum SVGTest {
         return CGImageDestinationFinalize(destination) ? data as Data : nil
     }
 
-    /// An opaque PNG of one colour.
+    /// An opaque PNG of one color.
     static func solid(width: Int, height: Int, red: CGFloat = 0.2, green: CGFloat = 0.4, blue: CGFloat = 0.8) -> Data {
         encode([bitmap(width: width, height: height) { context, rect in
             context.setFillColor(CGColor(srgbRed: red, green: green, blue: blue, alpha: 1))

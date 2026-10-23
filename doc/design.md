@@ -179,7 +179,7 @@ bound refused a drawing. What serialization removed or could not inline is in
 - `SVGNode` and `SVGDocument` are immutable once built and can be read from any thread.
 - One serialization runs on its caller's thread and calls the host's provider there, one call
   at a time. An `SVGImagePreparation` is shared by the drawings nested in one serialization and
-  is not thread-safe; its `cancelled` closure, `Task.isCancelled` by default, is asked before
+  is not thread-safe; its cancellation check, `Task.isCancelled` by default, is asked before
   each costly phase, and once it is true the serialization gives no drawing.
 - An `SVGRenderer` holds one parsed tree. Its draws are serialized; separate renderers draw
   concurrently. A draw that fails leaves the renderer failed for good. The tree, and the font

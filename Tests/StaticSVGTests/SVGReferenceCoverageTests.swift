@@ -7,7 +7,7 @@ import XCTest
 /// Repeating gradients are accepted by the screen: when their resolved geometry panics,
 /// the Rust boundary contains it and the ordinary section path substitutes fallback text.
 /// Inputs that spend the stack or never return are given only to the screen; contained
-/// panic inputs and known-safe neighbours also exercise the real renderer.
+/// panic inputs and known-safe neighbors also exercise the real renderer.
 final class SVGReferenceCoverageTests: XCTestCase {
     private static let ns = "xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'"
     /// A shape's size and paint: white, so that it shows through a mask.

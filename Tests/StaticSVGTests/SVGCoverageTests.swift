@@ -26,7 +26,7 @@ final class SVGCoverageTests: XCTestCase {
                 return p[3] == 0 ? "-" : p[0] > 128 ? "R" : p[2] > 128 ? "B" : "?"
             }
         }
-        // meet letterboxes: centred, transparent sides, red over blue.
+        // meet letterboxes: centered, transparent sides, red over blue.
         XCTAssertEqual(try render("xMidYMid meet"), ["-", "R", "-", "-", "B", "-"])
         XCTAssertEqual(try render("xMinYMid meet"), ["R", "-", "-", "B", "-", "-"], "xMin pins the drawing to the left")
         // slice fills the box, cropping; none stretches to fill.
@@ -190,7 +190,7 @@ final class SVGCoverageTests: XCTestCase {
         _ = source("<svg \(ns) width='10' height='10' viewBox='0 0 NaN inf'><rect width='5' height='5'/></svg>")
         XCTAssertNil(source("<svg \(ns) width='-10' height='-10'><rect width='5' height='5'/></svg>"), "a negative size is refused")
         XCTAssertNil(source("<svg \(ns) width='1e-9' height='1e-9'><rect width='5' height='5'/></svg>"), "a sub-point size is refused")
-        // A huge declared width is clamped to the raster ceiling, not honoured.
+        // A huge declared width is clamped to the raster ceiling, not honored.
         if let huge = source("<svg \(ns) width='100000' height='1'><rect width='5' height='5'/></svg>") {
             XCTAssertLessThanOrEqual(max(huge.pixelSize.width, huge.pixelSize.height), CGFloat(SVGRenderer.maximumDimension))
         }

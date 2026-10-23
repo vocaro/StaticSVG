@@ -117,11 +117,11 @@ final class SVGImagePreparationTests: XCTestCase {
     /// Replay merges counts with `SVGDiagnostics.formCappedUnion`: a merged count stops at
     /// `SVGDiagnostics.maximumMergedCount`, and a host's own increment can still go past it.
     func testCancellationStopsLoadsAndCachedResultsAndAmplifiedReportsStayRepresentable() {
-        var cancelled = false
-        let context = SVGImagePreparation(cancelled: { cancelled })
+        var canceled = false
+        let context = SVGImagePreparation(cancelled: { canceled }) // spelling: keep, the init's 0.1.x label
         XCTAssertNotNil(context.image(at: "x", ancestors: [], fonts: [:], maximumBytes: 1024, maximumPixels: 1024,
                                       load: { Data([1]) }) { _ in self.image() })
-        cancelled = true
+        canceled = true
         XCTAssertNil(context.image(at: "x", ancestors: [], fonts: [:], maximumBytes: 1024, maximumPixels: 1024,
                                    load: { XCTFail(); return nil }) { _ in XCTFail(); return nil })
         XCTAssertNil(context.request(at: "new", ancestors: [], fonts: [:], maximumBytes: 1024, maximumPixels: 1024) { XCTFail(); return nil })

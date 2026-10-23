@@ -21,6 +21,11 @@
       "resource": "light"
     }
   },
+  "spelling": {
+    "exemptPhrases": {
+      "stroke=\"grey\"": "spelling: keep, MDN's <marker> example as published, quoted in a test, where grey is a CSS color keyword"
+    }
+  },
   "exceptions": [],
   "integration": "direct-main"
 }

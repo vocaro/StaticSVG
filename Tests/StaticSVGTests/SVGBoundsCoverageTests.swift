@@ -8,9 +8,9 @@ import XCTest
 /// reaches the renderer and, past its bound, shows the fallback text with the same `svg`
 /// disclosure as the other limits ([#170](https://github.com/vocaro/EPUBLib/issues/170)).
 ///
-/// Markers are not modelled: they are counted in the forms a diagram uses and refused in any
+/// Markers are not modeled: they are counted in the forms a diagram uses and refused in any
 /// other, by the seven rules of `SVGContent.markerVerdict`, each of which has a test here with an
-/// input it refuses and a neighbour within limits. Every case asserts a verdict, a count or the
+/// input it refuses and a neighbor within limits. Every case asserts a verdict, a count or the
 /// step counter, never a time or a memory figure, which is machine-dependent (#62). An input that
 /// is refused is small enough to be harmless should a regression let it through to the renderer,
 /// or is given to the check alone.
@@ -70,7 +70,7 @@ final class SVGBoundsCoverageTests: XCTestCase {
             return "<svg \(ns) width='200' height='50'><text x='0' y='20'>" + String(repeating: "<tspan>\(each)</tspan>", count: 10) + "</text></svg>"
         }
         XCTAssertTrue(renders(tspans(19_990)))
-        XCTAssertFalse(renders(tspans(20_010)), "ten tspans totalling over 20,000 characters are one over-long run")
+        XCTAssertFalse(renders(tspans(20_010)), "ten tspans totaling over 20,000 characters are one over-long run")
 
         // Short separate runs render within the additional whole-drawing text bound (#176).
         let many = "<svg \(ns) width='200' height='50'>" + String(repeating: "<text x='0' y='20'>\(String(repeating: "a", count: 400))</text>", count: 100) + "</svg>"
@@ -273,7 +273,7 @@ final class SVGBoundsCoverageTests: XCTestCase {
                        "what stands above the definition is not above the drawn copy")
         XCTAssertEqual(count("", defs: "<g marker-end='url(#m)'>\(host)</g>"), 0, "a definition nothing draws")
 
-        // Every spelling the renderer honours is read.
+        // Every spelling the renderer honors is read.
         XCTAssertEqual(count(path(vertices: 10, "xlink:marker-mid='url(#m)'")), 31, "the renderer takes the attribute in the XLink namespace")
         XCTAssertEqual(count(path(vertices: 10, "xml:marker-mid='url(#m)'")), 31)
         XCTAssertEqual(count(path(vertices: 10, "f:style='marker-mid:url(#m)'"), root: "width='9' height='9' xmlns:f='urn:f'"), 31,
@@ -284,7 +284,7 @@ final class SVGBoundsCoverageTests: XCTestCase {
         }
     }
 
-    /// The renderer honours a marker property after `!important` with no separator, and in the XLink
+    /// The renderer honors a marker property after `!important` with no separator, and in the XLink
     /// namespace: proof that reading those spellings counts real instances. Each paints a red marker
     /// at the middle vertex.
     func testTheRendererDrawsTheSpellingsTheCheckReads() throws {
@@ -299,7 +299,7 @@ final class SVGBoundsCoverageTests: XCTestCase {
 
     /// One declaration never lowers what another asks for: a shape is charged the largest marker
     /// that it or any ancestor names. A declaration the renderer ignores, or one that only looks
-    /// like an override, cannot hide the one it honours.
+    /// like an override, cannot hide the one it honors.
     func testADeclarationNeverLowersTheCharge() throws {
         let markers = marker("big", rects: 50) + marker("tiny")
         func count(_ attributes: String) -> Int {
@@ -691,7 +691,7 @@ final class SVGBoundsCoverageTests: XCTestCase {
         // The walk a stylesheet of many selectors took is gone: a stylesheet is read once.
         XCTAssertEqual(verdict(reproducers[17].1).steps, 0)
 
-        // Neighbours the reviews confirmed harmless stay within limits.
+        // Neighbors the reviews confirmed harmless stay within limits.
         XCTAssertTrue(isWithinLimits(svg(big + "<clipPath id='c'>\(host("marker-mid='url(#big)'"))</clipPath>", "<rect width='9' height='9' clip-path='url(#c)'/>")), "markers in a clip path are not drawn")
         let enormousArc = svg(marker(), "<path d='M0 0\(String(repeating: "a1e30 1e30 0 1 1 1 0", count: 20))' marker-end='url(#m)'/>")
         XCTAssertTrue(verdict(enormousArc).withinLimits, "An end marker itself does not multiply arc vertices")

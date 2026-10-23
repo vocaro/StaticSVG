@@ -93,7 +93,7 @@ final class SVGRendererPanicTests: XCTestCase {
                 }
                 XCTAssertFalse(rawRender(tree, dimension: 16), "A failed tree cannot be reused: \(input.name)")
             } else {
-                XCTAssertFalse(resvg_is_image_empty(tree), "The small-raster neighbour remains usable")
+                XCTAssertFalse(resvg_is_image_empty(tree), "The small-raster neighbor remains usable")
                 XCTAssertTrue(rawRender(tree, dimension: 64), input.name)
             }
         } else {

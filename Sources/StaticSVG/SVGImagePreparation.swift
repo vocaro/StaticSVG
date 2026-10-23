@@ -37,7 +37,7 @@ public final class SVGImagePreparation {
     }
     private enum Result { case unavailable, image(Image) }
     private let limits: Limits
-    private let cancelled: () -> Bool
+    private let isCanceled: () -> Bool
     private var cache: [Key: Result] = [:]
     private var fontContexts: [[String: String]] = []
 
@@ -53,14 +53,14 @@ public final class SVGImagePreparation {
     /// Images and references answered from the cache so far.
     public private(set) var cacheHits = 0
 
-    /// `cancelled` is asked before each costly phase; once it is true every later phase is
-    /// refused, and the serialization in hand gives no drawing.
-    public init(limits: Limits = Limits(), cancelled: @escaping () -> Bool = { Task.isCancelled }) {
-        self.limits = limits; self.cancelled = cancelled
+    /// The cancellation check, `Task.isCancelled` by default, is asked before each costly phase;
+    /// once it is true every later phase is refused, and the serialization in hand gives no drawing.
+    public init(limits: Limits = Limits(), cancelled isCanceled: @escaping () -> Bool = { Task.isCancelled }) { // spelling: keep, 0.1.x's label, which only a minor release may rename
+        self.limits = limits; self.isCanceled = isCanceled
     }
 
     @discardableResult func permitsWork() -> Bool {
-        guard !cancelled() else { refuse(); return false }
+        guard !isCanceled() else { refuse(); return false }
         return true
     }
     func refuse() { refusals += 1 }
