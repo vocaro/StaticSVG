@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The marker bound no longer refuses a rounded rectangle under `marker-mid` for a radius past
+  half its side, which the renderer clamps, or a drawing with markers for a long declaration the
+  renderer copies onto no element, such as an embedded font's in an `@font-face` rule
+  ([vocaro/EPUBLib#274](https://github.com/vocaro/EPUBLib/issues/274)).
+
 - An `<image>` whose picture is an SVG, and that gives neither `width` nor `height`, is laid
   out at that drawing's own size, as a browser lays it out, and not at the 2,048-pixel size of
   the raster it is inlined as, which had the outer drawing refused

@@ -446,8 +446,13 @@ final class SVGBoundsCoverageTests: XCTestCase {
                        "6,405 bytes of attribute, with the 19 above it: 100; 3,202 numbers: 100")
 
         // A stylesheet's dash array may reach every element, so each counts its bytes.
-        let sheet = "<style>line{stroke-dasharray:\(String(repeating: "1 ", count: 60))}</style>"
-        XCTAssertEqual(size(marker(rects: 2), sheet: sheet), 2 * 3 + 2, "137 bytes: two more for each rectangle, and two for the line that bears the marker")
+        let sheet = "<style>line{stroke-dasharray:\(String(repeating: "1 ", count: 65))}</style>"
+        XCTAssertEqual(size(marker(rects: 2), sheet: sheet), 2 * 3 + 2, "129 bytes: two more for each rectangle, and two for the line that bears the marker")
+        // What the renderer copies onto no element costs nothing: an at-rule's declarations, such
+        // as an embedded font's, and a property it does not read (EPUBLib#274).
+        let font = String(repeating: "A", count: 6_400)
+        XCTAssertEqual(size(marker(rects: 2), sheet: "<style>@font-face{font-family:F;src:url(data:font/woff2;base64,\(font))}</style>"), 2)
+        XCTAssertEqual(size(marker(rects: 2), sheet: "<style>line{data-x:\(font)}</style>"), 2)
     }
 
     // MARK: Rule 5: masks and clip paths
@@ -524,10 +529,16 @@ final class SVGBoundsCoverageTests: XCTestCase {
         XCTAssertEqual(result("<circle cx='10' cy='10' r='6' marker-mid='url(#m)'/>").instances, 13, "12 segments at most, and one")
         XCTAssertEqual(result("<ellipse rx='3' ry='1e12' marker-mid='url(#m)'/>").instances, 159, "by the greater radius")
         XCTAssertEqual(result("<rect width='9' height='9' rx='2' marker-mid='url(#m)'/>").instances, 18)
+        // The renderer rounds a corner by no more than half the side, whatever the radius (EPUBLib#274).
+        XCTAssertEqual(result("<rect width='9' height='9' rx='1e40' marker-mid='url(#m)'/>").instances, 18)
+        XCTAssertEqual(result("<rect width='9' height='1e12' rx='1e40' marker-mid='url(#m)'/>").instances,
+                       result("<ellipse rx='5e11' ry='1' marker-mid='url(#m)'/>").instances + 5, "by half the longer side, and the rectangle's five")
+        XCTAssertTrue(renders(svg(marker(), "<rect width='9' height='9' rx='1e40' marker-mid='url(#m)' stroke='black'/>")))
         XCTAssertEqual(result("<circle xlink:r='1e12' r='1' marker-mid='url(#m)'/>").instances, 159, "in any namespace")
         XCTAssertTrue(renders(svg(marker(), "<circle cx='10' cy='10' r='6' marker-mid='url(#m)' stroke='black'/>")))
         for shape in ["<circle r='1e40' marker-mid='url(#m)'/>", "<circle r='6px' marker-mid='url(#m)'/>", "<ellipse rx='50%' ry='2' marker-mid='url(#m)'/>",
                       "<rect width='9' height='9' ry='1em' marker-mid='url(#m)'/>", "<circle xlink:r='1e40' r='1' marker-mid='url(#m)'/>",
+                      "<rect width='9px' height='9' rx='1e40' marker-mid='url(#m)'/>",
                       "<path d='M0 0a5 5 0 0 1 9 0' marker-mid='url(#m)'/>", "<path d='M0 0A5 5 0 0 1 9 0' style='marker:url(#m)'/>"] {
             XCTAssertFalse(result(shape).withinLimits, shape)
         }

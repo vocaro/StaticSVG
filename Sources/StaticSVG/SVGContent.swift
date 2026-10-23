@@ -324,9 +324,9 @@ enum SVGContent {
     ///     instance of it costs.
     ///  5. No shape in a `<mask>` bears a marker: the renderer draws a mask's content again for
     ///     every element that uses the mask. A `<clipPath>` draws no markers.
-    ///  6. A `circle`, an `ellipse` and a rounded `rect` have the vertices their radius allows. A
-    ///     path with an elliptical arc has a number its text does not bound: under `marker-mid`,
-    ///     or inside a `<marker>`, it is refused.
+    ///  6. A `circle`, an `ellipse` and a rounded `rect` have the vertices their radius allows,
+    ///     a `rect`'s no more than half its longer side. A path with an elliptical arc has a number
+    ///     its text does not bound: under `marker-mid`, or inside a `<marker>`, it is refused.
     ///  7. One walk of what is drawn, following `<use>` as `cost` does, sums for each shape its
     ///     vertices times its `marker-mid` size, and its `marker-start` and `marker-end` sizes,
     ///     and one more for each of the three it draws with. The sum is held to
@@ -344,10 +344,12 @@ enum SVGContent {
 
         // Rule 1. What else a stylesheet declares names no element, and is taken to reach every
         // element: a context paint, and its longest declaration as an attribute of each element in
-        // a marker and as the dash array of each shape that bears one.
+        // a marker and as the dash array of each shape that bears one. That is the longest value
+        // the renderer copies onto an element, as `copyVerdict` charges it: an at-rule's, such as
+        // an embedded font's `src`, is copied onto none (#274).
         let sheets = nodes.filter { $0.name == "style" }.map(\.textContent)
         guard !sheets.contains(where: namesElement) else { return refused }
-        let sheetBytes = sheets.map(longestDeclaration).max() ?? 0
+        let sheetBytes = sheets.map { styleSheetCopyBytes($0, read: { _ in true }) ?? longestDeclaration($0) }.max() ?? 0
         let contextPaint = sheets.contains { mentions($0, "context-") } || nodes.contains { node in
             node.attributes.contains { ($0.name == "fill" || $0.name == "stroke" || $0.name == "style") && mentions($0.value, "context-") }
         }
@@ -1326,6 +1328,7 @@ enum SVGContent {
         var closes = 0
         var arc = false
         var radius: Double? = 0
+        var side: Double? = 0
         for attribute in shape.attributes {
             switch attribute.name {
             case "d", "points":
@@ -1345,6 +1348,8 @@ enum SVGContent {
             case "r", "rx", "ry":
                 // A length with a unit or a percentage is not bounded here.
                 radius = Double(attribute.value).flatMap { value in radius.map { max($0, abs(value)) } }
+            case "width", "height":
+                side = Double(attribute.value).flatMap { value in side.map { max($0, abs(value)) } }
             default: break
             }
         }
@@ -1352,7 +1357,13 @@ enum SVGContent {
         case "path": return arc ? nil : numbers + closes
         case "polyline", "polygon": return numbers
         case "line": return 2
-        case "rect": return radius == 0 ? 5 : radius.flatMap(arcSegments).map { 5 + $0 }
+        case "rect":
+            // The renderer clamps each radius to half the side it rounds before it flattens the
+            // corner (usvg 0.48.1, `convert_rect`), so a corner is never rounder than half the
+            // longer side, whatever the radius says (#274).
+            var corner = radius
+            if let radius, let side { corner = min(radius, side / 2) }
+            return corner == 0 ? 5 : corner.flatMap(arcSegments).map { 5 + $0 }
         case "circle", "ellipse": return radius.flatMap(arcSegments)
         default: return 0
         }
