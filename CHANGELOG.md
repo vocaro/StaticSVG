@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The screens link a drawing's own class rules to the elements the renderer styles, comparing
+  class names by their bytes and splitting class lists at spaces alone: they no longer refuse
+  for a rule the renderer does not apply, or miss one it does
+  ([vocaro/EPUBLib#752](https://github.com/vocaro/EPUBLib/issues/752)).
+
 - An `href` or `src` whose `#` a combining mark follows is kept as the fragment the renderer
   reads, where the serializer took it for a file, dropped it and reported an image
   ([vocaro/EPUBLib#641](https://github.com/vocaro/EPUBLib/issues/641)).

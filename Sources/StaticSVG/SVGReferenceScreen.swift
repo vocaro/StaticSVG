@@ -203,7 +203,7 @@ enum SVGReferenceScreen {
                         for declaration in CSSReader.declarations(of: attribute.value) { own[i].add(declaration.name, declaration.value) }
                     case "class":
                         // The renderer splits a class list at spaces alone.
-                        matching += attribute.value.split(separator: " ").map { .class(String($0)) }
+                        matching += attribute.value.utf8.split(separator: UInt8(ascii: " ")).map { .class(Array($0)) }
                     case "id":
                         matching.append(.id(SVGElementID(attribute.value)))
                     default:
@@ -433,7 +433,7 @@ enum SVGReferenceScreen {
         for attribute in element.attributes {
             if attribute.name == "id" { result.insert(.id(SVGElementID(attribute.value))) }
             if attribute.name == "class" {
-                for name in attribute.value.split(separator: " ") { result.insert(.class(String(name))) }
+                for name in attribute.value.utf8.split(separator: UInt8(ascii: " ")) { result.insert(.class(Array(name))) }
             }
         }
         return result
@@ -454,7 +454,9 @@ enum SVGReferenceScreen {
     enum Subject: Hashable {
         case any
         case type(String)
-        case `class`(String)
+        /// A class name by its bytes, which the renderer compares, and not by canonical
+        /// equivalence, under which `\u{F1}` and `n\u{303}` are one name.
+        case `class`([UInt8])
         case id(SVGElementID)
 
         /// How few elements meet it: the condition kept is the one that fewest do.
@@ -723,7 +725,7 @@ enum SVGReferenceScreen {
                     position += 1
                     guard let name = identifier() else { return nil }
                     attributes[byte == UInt8(ascii: "#") ? "id" : "class", default: 0] += 1
-                    condition(byte == UInt8(ascii: "#") ? .id(SVGElementID(string(name))) : .class(string(name)))
+                    condition(byte == UInt8(ascii: "#") ? .id(SVGElementID(string(name))) : .class(Array(text[name])))
                 case UInt8(ascii: "["):
                     expectsSelector = false
                     position += 1

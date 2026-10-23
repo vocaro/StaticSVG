@@ -345,6 +345,10 @@ final class SVGReferenceCoverageTests: XCTestCase {
             ("a style attribute in another namespace", ringClosed(by: "<rect xmlns:q='urn:q' \(Self.box) q:style='mask:url(#a)'/>")),
             ("a class rule", ringClosed(by: "\(rect) class='k'/>", sheet: "<style>.k{mask:url(#a)}</style>")),
             ("a class attribute in another namespace", ringClosed(by: "<rect xmlns:q='urn:q' \(Self.box) q:class='k'/>", sheet: "<style>.k{mask:url(#a)}</style>")),
+            ("a class rule for a name past Latin-1", ringClosed(by: "\(rect) class='\u{F1}'/>", sheet: "<style>.\u{F1}{mask:url(#a)}</style>")),
+            // The renderer splits a class list at spaces alone, though a space and the combining
+            // mark after it are one `Character` (EPUBLib#752).
+            ("a class after a space that a combining mark follows", ringClosed(by: "\(rect) class='j &#x301;k'/>", sheet: "<style>.j{mask:url(#a)}</style>")),
             ("a type rule", ringClosed(by: "<circle r='3' fill='white'/>", sheet: "<style>circle{mask:url(#a)}</style>")),
             ("an id rule", ringClosed(by: "\(rect) id='x'/>", sheet: "<style>#x{mask:url(#a)}</style>")),
             ("an attribute rule", ringClosed(by: "\(rect) data-x='1'/>", sheet: "<style>[data-x]{mask:url(#a)}</style>")),
@@ -401,6 +405,8 @@ final class SVGReferenceCoverageTests: XCTestCase {
                 .replacingOccurrences(of: "<mask id='a'>", with: "<mask id='&#xE9;'>")
                 .replacingOccurrences(of: "<rect width='5' height='5' mask='url(#a)'/>", with: "<rect width='5' height='5' mask='url(#&#xE9;)'/>")),
             ("a use of an id canonically equivalent to the shape's", ringClosed(by: "<use href='#e&#x301;'/>\(rect)/>", definitions: "<defs>\(rect) id='&#xE9;' mask='url(#a)'/></defs>")),
+            // And class names too (EPUBLib#752).
+            ("a class canonically equivalent to the rule's", ringClosed(by: "\(rect) class='n&#x303;'/>", sheet: "<style>.\u{F1}{mask:url(#a)}</style>")),
         ]
         for (name, body) in ignored { XCTAssertNotNil(source(body), name) }
     }
