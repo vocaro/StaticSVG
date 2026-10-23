@@ -61,15 +61,20 @@ deletes by its identifier however the run ends. Each run must execute at least 1
 none failed. The only test allowed to skip is
 `SVGFontSizeCostTests.testGeneratedProbeFixturesMatchScreen`, the opt-in
 [font-size cost probe](#font-size-cost-probe), which needs generated inputs; any other skip
-fails the run. Admission counts the gate as one job, so its builds take two jobs and the
-simulator runs its tests in one process.
+fails the run. Each run must also have linked the renderer this commit records: the copy of
+`libresvg.a` its build leaves among its products, the macOS slice for `swift test` and the
+simulator slice for `xcodebuild`, must have the SHA-256 that `Resvg/checksums.json` gives it,
+whichever `Resvg.xcframework` `Package.swift` took; a run whose build left no copy is
+unmeasured. Admission counts the gate as one job, so its builds take two jobs and the simulator
+runs its tests in one process.
 
 The gate exits 0 only when every step passed and 1 when any failed. It exits 3, never 0, when
 none failed but one is unmeasured: the runtime is missing, the simulator did not finish booting
 within ten minutes, a step gave no result within its hang bound, or an `eng` check could not
 run, which it reports by exiting 2, as it does when it finds no toolkit. A step that changes the
 checkout fails the gate. The lane's log, `.build/engineering/gate/run.log`, ends with the
-commit, the renderer the suites linked and each step's outcome.
+commit, the framework `Package.swift` was told to take, and each step's outcome, a suite's with
+the renderer it linked.
 
 The gate finds the toolkit as `scripts/eng` does, from a session's worktree too, and runs its
 checks against that checkout. From a clone that has no `apple-engineering` beside it or beside

@@ -6,11 +6,12 @@ Admission counts it as one job, so every build it starts takes JOBS jobs and eac
 tests in one process. It passes only when every step passed: the gate's own tests; the
 documentation and spelling checks; and the full Swift suite in macOS debug and optimized builds
 and on a disposable iOS simulator, each with at least SWIFT_TESTS tests, none failed and none
-skipped but the opt-in probes in OPT_IN. A step that gives no result within its hang bound is
-unmeasured, as is one whose prerequisite is missing, such as the simulator runtime, a simulator
-that does not finish booting, or an `eng` check that cannot run (exit 2); the gate then exits 3,
-never 0.
+skipped but the opt-in probes in OPT_IN, and each linking the renderer this commit records in
+Resvg/checksums.json. A step that gives no result within its hang bound is unmeasured, as is one
+whose prerequisite is missing, such as the simulator runtime, a simulator that does not finish
+booting, or an `eng` check that cannot run (exit 2); the gate then exits 3, never 0.
 """
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -36,7 +37,7 @@ except ImportError:
 
 # Floors: a suite that runs fewer tests fails. Lower one only in the commit that removes tests.
 SWIFT_TESTS = 155
-GATE_TESTS = 18
+GATE_TESTS = 23
 # Tests that skip unless a probe's inputs are given (doc/testing.md, Probes); any other skip fails.
 OPT_IN = {("SVGFontSizeCostTests", "testGeneratedProbeFixturesMatchScreen")}
 # Admission counts the gate as one job, so every build it starts takes this many jobs.
@@ -46,6 +47,9 @@ DEVICE = "iPhone 17 Pro"
 # of its own when the host's Xcode moves on.
 RUNTIME = "com.apple.CoreSimulator.SimRuntime.iOS-27-2"
 BUILD = ROOT / ".build/gate"
+# The renderer slice each suite links, as Resvg/checksums.json names it.
+MACOS_SLICE = "Resvg.xcframework/macos-arm64_x86_64/libresvg.a"
+SIMULATOR_SLICE = "Resvg.xcframework/ios-arm64_x86_64-simulator/libresvg.a"
 
 
 class Failed(Exception):
@@ -166,9 +170,29 @@ def eng_check(*arguments):
     return "passed"
 
 
+def linked_renderer(products, slice):
+    """The renderer a suite linked, by the copy of its library the build left among its products.
+
+    SwiftPM and Xcode each copy the slice they link out of whichever Resvg.xcframework
+    Package.swift named, and both name the other one again when STATICSVG_LOCAL_RESVG changes, a
+    build directory reused or not (StaticSVG#2). Each copy must be the library Resvg/checksums.json
+    records: the framework a release is tagged with, whether it came from the release asset or the
+    local build. A copy in the downloaded artifacts is no product and is not read."""
+    copies = sorted(path for path in products.rglob("libresvg.a") if "artifacts" not in path.relative_to(products).parts)
+    if not copies:
+        raise Unmeasured(f"its build left no libresvg.a under {products}")
+    expected = json.loads((ROOT / "Resvg/checksums.json").read_text())[slice]
+    for copy in copies:
+        digest = hashlib.sha256(copy.read_bytes()).hexdigest()
+        if digest != expected:
+            raise Failed(f"linked {copy} ({digest[:12]}…), not the {slice} Resvg/checksums.json records ({expected[:12]}…)")
+    return f"linked {slice.split('/')[1]} {expected[:12]}…, as Resvg/checksums.json records"
+
+
 def swift_suite(name, *configuration):
-    return xctest(*run(["swift", "test", "--jobs", JOBS, "--scratch-path", BUILD / name, *configuration],
-                       timeout=5400))
+    result = xctest(*run(["swift", "test", "--jobs", JOBS, "--scratch-path", BUILD / name, *configuration],
+                         timeout=5400))
+    return f"{result}; {linked_renderer(BUILD / name, MACOS_SLICE)}"
 
 
 def runtime_identity():
@@ -196,11 +220,12 @@ def ios_suite():
             raise Unmeasured(f"simulator {device.udid} did not finish booting within 600 s")
         except subprocess.CalledProcessError as error:
             raise Unmeasured(f"simulator {device.udid} did not boot: {error}")
-        return xctest(*run(["xcodebuild", "test", "-scheme", "StaticSVG",
-                            "-destination", f"platform=iOS Simulator,id={device.udid}", "-destination-timeout", "600",
-                            "-jobs", JOBS, "-parallel-testing-enabled", "NO", "-collect-test-diagnostics", "never",
-                            "-derivedDataPath", BUILD / "ios-derived-data", "-resultBundlePath", results],
-                           timeout=7200))
+        result = xctest(*run(["xcodebuild", "test", "-scheme", "StaticSVG",
+                              "-destination", f"platform=iOS Simulator,id={device.udid}", "-destination-timeout", "600",
+                              "-jobs", JOBS, "-parallel-testing-enabled", "NO", "-collect-test-diagnostics", "never",
+                              "-derivedDataPath", BUILD / "ios-derived-data", "-resultBundlePath", results],
+                             timeout=7200))
+    return f"{result}; {linked_renderer(BUILD / 'ios-derived-data/Build/Products', SIMULATOR_SLICE)}"
 
 
 def tree():
@@ -243,9 +268,10 @@ def gate(steps=STEPS):
             results.append((name, "unmeasured", str(error)))
     if tree() != before:
         results.append(("checkout", "failed", "a step changed the checkout"))
+    # What Package.swift was told to take; what each suite linked is in its own line.
     renderer = ("the local Resvg/Resvg.xcframework (STATICSVG_LOCAL_RESVG=1)"
-                if os.environ.get("STATICSVG_LOCAL_RESVG") == "1" else "the release asset Package.swift names")
-    print(f"\n=== Gate for {commit}" + ("" if before == b"" else ", with local changes") + f", renderer {renderer}")
+                if os.environ.get("STATICSVG_LOCAL_RESVG") == "1" else "the release asset it names")
+    print(f"\n=== Gate for {commit}" + ("" if before == b"" else ", with local changes") + f", Package.swift taking {renderer}")
     for name, outcome, detail in results:
         print(f"{outcome:>10}  {name}: {detail}")
     outcomes = {outcome for _, outcome, _ in results}

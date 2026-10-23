@@ -109,6 +109,11 @@ publishes it:
    STATICSVG_LOCAL_RESVG=1 python3 scripts/eng run gate
    ```
 
+   Each suite is held to the libraries `checksums.json` records, by the copy its build linked,
+   so a run that took the previous release's asset fails. SwiftPM and Xcode both take the other
+   framework when the variable changes, in a build directory the gate has used before
+   ([StaticSVG#2](https://github.com/vocaro/StaticSVG/issues/2)).
+
 4. Push the release commit to `main`, tag it with the version, and publish a GitHub release for
    the tag with the zip as its asset, named `Resvg.xcframework.zip`.
 5. From a fresh clone of the tag, with no local framework, run the gate again. SwiftPM fetches

@@ -1,9 +1,12 @@
 """The release gate's judgments, without running a suite."""
 import contextlib
+import hashlib
 import io
+import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest import mock
 
@@ -93,6 +96,7 @@ class SimulatorTests(unittest.TestCase):
             return 0, xctest_log(155)
         with mock.patch.object(gate, "run", side_effect=run), \
                 mock.patch.object(gate, "BUILD", Path("/nonexistent/gate")), \
+                mock.patch.object(gate, "linked_renderer", return_value="linked the simulator slice"), \
                 mock.patch.object(gate.lifecycle, "command", return_value=self.runtimes), \
                 mock.patch.object(gate.lifecycle, "disposable", return_value=contextlib.nullcontext(device)) as disposable, \
                 contextlib.redirect_stdout(io.StringIO()):
@@ -101,7 +105,7 @@ class SimulatorTests(unittest.TestCase):
 
     def test_the_suite_runs_on_an_owned_device_of_the_named_runtime(self):
         result, commands, disposable = self.commands(mock.Mock(udid="UDID"))
-        self.assertEqual(result, "155 tests passed, none skipped")
+        self.assertEqual(result, "155 tests passed, none skipped; linked the simulator slice")
         self.assertEqual(disposable.call_args.args, ("com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
                                                      "com.apple.CoreSimulator.SimRuntime.iOS-27-2"))
         self.assertEqual(commands[0][commands[0].index("-destination") + 1], "platform=iOS Simulator,id=UDID")
@@ -118,6 +122,66 @@ class SimulatorTests(unittest.TestCase):
                 gate.runtime_identity()
 
 
+class RendererTests(unittest.TestCase):
+    """Each suite is held to the renderer Resvg/checksums.json records, by what its build linked."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        (self.root / "Resvg").mkdir()
+        (self.root / "Resvg/checksums.json").write_text(json.dumps({gate.MACOS_SLICE: hashlib.sha256(b"recorded").hexdigest()}))
+        self.products = self.root / ".build/gate/debug"
+        patch = mock.patch.object(gate, "ROOT", self.root)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def library(self, relative, content):
+        path = self.products / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+
+    def test_a_suite_that_linked_the_recorded_library_passes(self):
+        self.library("out/Products/Debug/libresvg.a", b"recorded")
+        self.assertEqual(gate.linked_renderer(self.products, gate.MACOS_SLICE),
+                         f"linked macos-arm64_x86_64 {hashlib.sha256(b'recorded').hexdigest()[:12]}…, as Resvg/checksums.json records")
+
+    def test_a_suite_that_linked_another_library_fails(self):
+        self.library("out/Products/Debug/libresvg.a", b"recorded")
+        self.library("out/Products/Release/libresvg.a", b"the release asset of an older renderer")
+        with self.assertRaisesRegex(gate.Failed, "Release/libresvg.a .*, not the Resvg.xcframework/macos-arm64_x86_64/libresvg.a"):
+            gate.linked_renderer(self.products, gate.MACOS_SLICE)
+
+    def test_a_build_that_left_no_library_is_unmeasured(self):
+        with self.assertRaisesRegex(gate.Unmeasured, "left no libresvg.a"):
+            gate.linked_renderer(self.products, gate.MACOS_SLICE)
+
+    def test_a_downloaded_artifact_is_not_what_was_linked(self):
+        self.library("artifacts/staticsvg/CResvg/Resvg.xcframework/macos-arm64_x86_64/libresvg.a", b"an older renderer")
+        with self.assertRaises(gate.Unmeasured):
+            gate.linked_renderer(self.products, gate.MACOS_SLICE)
+        self.library("out/Products/Debug/libresvg.a", b"recorded")
+        self.assertIn("as Resvg/checksums.json records", gate.linked_renderer(self.products, gate.MACOS_SLICE))
+
+    def test_each_suite_checks_its_own_slice_where_its_build_put_it(self):
+        checked = []
+        def linked(products, slice):
+            checked.append((products, slice))
+            return "linked"
+        with mock.patch.object(gate, "run", return_value=(0, xctest_log(155))), \
+                mock.patch.object(gate, "BUILD", Path("/gate")), \
+                mock.patch.object(gate, "linked_renderer", side_effect=linked), \
+                mock.patch.object(gate, "runtime_identity", return_value=({"version": "27.2", "buildversion": "1",
+                                  "identifier": "runtime"}, {"identifier": "type"})), \
+                mock.patch.object(gate.lifecycle, "disposable", return_value=contextlib.nullcontext(mock.Mock(udid="UDID"))), \
+                contextlib.redirect_stdout(io.StringIO()):
+            steps = dict(gate.STEPS)
+            results = [steps[name]() for name in ("macOS debug", "macOS optimized", "iOS simulator")]
+        self.assertEqual(checked, [(Path("/gate/debug"), gate.MACOS_SLICE), (Path("/gate/release"), gate.MACOS_SLICE),
+                                   (Path("/gate/ios-derived-data/Build/Products"), gate.SIMULATOR_SLICE)])
+        self.assertTrue(all(result.endswith("; linked") for result in results), results)
+
+
 class ParallelismTests(unittest.TestCase):
     """Admission counts the gate as one job, so it bounds what it starts."""
 
@@ -129,6 +193,7 @@ class ParallelismTests(unittest.TestCase):
         steps = dict(gate.STEPS)
         with mock.patch.object(gate, "run", side_effect=run), \
                 mock.patch.object(gate, "BUILD", Path("/nonexistent/gate")), \
+                mock.patch.object(gate, "linked_renderer", return_value="linked"), \
                 mock.patch.object(gate, "runtime_identity", return_value=({"version": "27.2", "buildversion": "1",
                                   "identifier": "runtime"}, {"identifier": "type"})), \
                 mock.patch.object(gate.lifecycle, "disposable", return_value=contextlib.nullcontext(mock.Mock(udid="UDID"))), \
