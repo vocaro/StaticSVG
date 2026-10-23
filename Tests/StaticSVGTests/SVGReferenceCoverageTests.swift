@@ -245,6 +245,7 @@ final class SVGReferenceCoverageTests: XCTestCase {
 
     func testGradientsTheRendererPadsAndRadialGradientsStillDraw() throws {
         // Each of these was shown to draw: the renderer takes the linear gradient to pad, and paints its last stop.
+        // The panic is at raster time, so each is drawn at a reader's size as well as the 64 pixels `SVGRenderer` checks.
         let padded: [(String, String)] = [
             ("pad", gradient("spreadMethod='pad'")),
             ("no spreadMethod", gradient()),
@@ -269,7 +270,7 @@ final class SVGReferenceCoverageTests: XCTestCase {
         ]
         for (name, body) in padded {
             XCTAssertTrue(try passes(body), name)
-            XCTAssertNotNil(source(body), name)
+            XCTAssertNotNil(source(body)?.decode(maxPixelSize: 1024), name)
         }
 
         // A radial gradient never takes the path that panics, whatever its spread and however little is left of it.
@@ -290,14 +291,14 @@ final class SVGReferenceCoverageTests: XCTestCase {
             for spread in ["repeat", "reflect"] {
                 let body = "<radialGradient id='g' \(attributes) spreadMethod='\(spread)'>\(Self.stops)</radialGradient><rect width='5' height='5' fill='url(#g)'/>"
                 XCTAssertTrue(try passes(body), "radial, \(spread): \(name)")
-                XCTAssertNotNil(source(body), "radial, \(spread): \(name)")
+                XCTAssertNotNil(source(body)?.decode(maxPixelSize: 1024), "radial, \(spread): \(name)")
             }
         }
         // A radial gradient's spread is not that of a linear gradient it leads to: the walk goes one way.
         let oneWay = "<linearGradient id='b' \(Self.noLength)>\(Self.stops)</linearGradient><radialGradient id='g' href='#b' spreadMethod='repeat'/>"
             + "<rect width='5' height='5' fill='url(#g)' stroke='url(#b)'/>"
         XCTAssertTrue(try passes(oneWay))
-        XCTAssertNotNil(source(oneWay))
+        XCTAssertNotNil(source(oneWay)?.decode(maxPixelSize: 1024))
     }
 
     // MARK: Chains
@@ -521,6 +522,39 @@ final class SVGReferenceCoverageTests: XCTestCase {
                 XCTAssertTrue(SVGContent.isWithinRenderingLimits(serialized.root), "serialized: \(name)")
             }
         }
+    }
+
+    /// The renderer ignores an `xlink:href` beside an unprefixed `href`. The serializer, which
+    /// drops an `href` it cannot use, drops the `xlink:href` with it: kept, it took over, and the
+    /// renderer followed a reference the book's markup overrides
+    /// ([#316](https://github.com/vocaro/EPUBLib/issues/316)).
+    func testAnXLinkHrefIsDroppedWithTheHrefThatOverridesIt() throws {
+        // The issue's drawing. As written the empty `href` wins, and the renderer pads the
+        // gradient; led to the radial gradient, it would take its repeat and panic.
+        let padded = gradient("href='' xlink:href='#b'", after: "<radialGradient id='b' spreadMethod='repeat'/>")
+        let bytes = try trees(padded).bytes
+        for (form, data) in [("as written", Data(drawing(padded).utf8)), ("serialized", bytes)] {
+            let image = try XCTUnwrap(SVGImageSource.svg(data)?.decode(maxPixelSize: 10), form)
+            XCTAssertEqual(SVGTest.rgba(image, x: 2, y: 2), [255, 255, 255, 255], form)
+        }
+        let red = SVGTest.solid(width: 5, height: 5, red: 1, green: 0, blue: 0).base64EncodedString()
+        for element in [padded, "<defs><rect id='q' \(Self.box)/></defs><use href='' xlink:href='#q'/>",
+                        "<image href='missing.png' xlink:href='data:image/png;base64,\(red)' width='5' height='5'/>"] {
+            let report = SVGDiagnosticsBox()
+            let written = try SVGDocument.parse(Data(drawing(element).utf8), limits: .renderer)
+            let serialized = try XCTUnwrap(SVGContent.serialize(written.root, resolve: { _ in nil }, resources: nil, report: report))
+            XCTAssertNil(serialized.range(of: Data("xlink:href".utf8)), element)
+            XCTAssertEqual(report.diagnostics.counts, [.image: 1], "the href alone is reported: \(element)")
+        }
+
+        // Kept, the `xlink:href` would lead this gradient into a loop it never leaves. Those are
+        // the bytes the serializer once wrote, and the screening `SVGRenderer.init` makes of the
+        // bytes it is given refuses them; they are given only to the screens.
+        let loop = gradients(ring: 2, tail: 0) + "<linearGradient id='g' href='' xlink:href='#r0'/><rect width='5' height='5' fill='url(#g)'/>"
+        XCTAssertTrue(try passes(loop), "as written")
+        XCTAssertTrue(SVGContent.isWithinRenderingLimits(try trees(loop).serialized.root), "serialized")
+        let earlier = try SVGDocument.parse(Data(drawing(loop.replacingOccurrences(of: "href='' xlink:href", with: "xlink:href")).utf8), limits: .renderer)
+        XCTAssertFalse(SVGContent.isWithinRenderingLimits(earlier.root), "as the serializer once wrote it")
     }
 
     // MARK: The screen's own cost

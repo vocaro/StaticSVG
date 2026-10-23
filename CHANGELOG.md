@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Serializing a drawing drops an element's `xlink:href` along with the unprefixed `href` it
+  cannot use, so that serializing never changes which reference the renderer follows
+  ([vocaro/EPUBLib#316](https://github.com/vocaro/EPUBLib/issues/316)).
+
 - The screens link a drawing's own class rules to the elements the renderer styles, comparing
   class names by their bytes and splitting class lists at spaces alone: they no longer refuse
   for a rule the renderer does not apply, or miss one it does

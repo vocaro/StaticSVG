@@ -1680,6 +1680,10 @@ enum SVGContent {
             }
             write("<" + node.name)
             if isRoot { write(" xmlns=\"\(SVGNamespace.svg)\" xmlns:xlink=\"\(SVGNamespace.xlink)\"") }
+            // The renderer ignores an `xlink:href` beside an unprefixed `href`, wherever each is
+            // written. It is left out, so that dropping an `href` this cannot use never hands the
+            // reference to the `xlink:href` it overrode (#316).
+            let hasHref = node.attribute("href") != nil
             for attribute in node.attributes {
                 let name: String
                 switch attribute.namespace {
@@ -1688,7 +1692,9 @@ enum SVGContent {
                     // under the root's declarations it would become a live reference.
                     guard !attribute.name.contains(":") else { continue }
                     name = attribute.name
-                case SVGNamespace.xlink: name = "xlink:" + attribute.name
+                case SVGNamespace.xlink:
+                    guard !hasHref || attribute.name != "href" else { continue }
+                    name = "xlink:" + attribute.name
                 case SVGNamespace.xml: name = "xml:" + attribute.name
                 default: continue
                 }

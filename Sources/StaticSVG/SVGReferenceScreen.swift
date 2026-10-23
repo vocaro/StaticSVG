@@ -27,7 +27,10 @@ import Foundation
 /// rule one finds the other may not. The serializer writes a `style` element as one text, and
 /// the reader hands the renderer nothing but serialized bytes, which `SVGRenderer.init`
 /// screens again as it is given them: that is what removes the difference. A path that handed
-/// the renderer a book's bytes as written could not rely on this screen alone.
+/// the renderer a book's bytes as written could not rely on this screen alone. Serializing can
+/// change references too, by what it drops: it once dropped an `href` it could not use and kept
+/// the `xlink:href` that `href` overrode, which the renderer then followed (EPUBLib#316). That
+/// second screening is what holds whatever serializing changes, so it is never redundant.
 ///
 /// A marker that draws a marker, or whose content names anything, is `SVGContent.markerVerdict`'s
 /// to refuse, and it does. Markers are followed here for what that leaves: content that takes
