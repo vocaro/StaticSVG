@@ -1695,8 +1695,9 @@ enum SVGContent {
             // written. It is left out, so that dropping an `href` this cannot use never hands the
             // reference to the `xlink:href` it overrode (#316).
             let hasHref = node.attribute("href") != nil
-            // The size of the drawing an `<image>` inlines as PNG, from the `href` the renderer reads.
-            var drawingSize: CGSize?
+            // The own size of the picture an `<image>` inlines as a PNG of another size, from the
+            // `href` the renderer reads.
+            var pictureSize: CGSize?
             for attribute in node.attributes {
                 let name: String
                 switch attribute.namespace {
@@ -1744,7 +1745,7 @@ enum SVGContent {
                         }
                         inlined += data.count; imagePixels += pixels
                         value = "data:image/png;base64," + data.base64EncodedString()
-                        if attribute.name == "href", attribute.namespace != SVGNamespace.xml { drawingSize = size }
+                        if attribute.name == "href", attribute.namespace != SVGNamespace.xml { pictureSize = size }
                     }
                 } else if unsafeCSS(value) {
                     report?.diagnostics.record(.attribute)
@@ -1755,13 +1756,14 @@ enum SVGContent {
                 write(" \(name)=\"\(escape(value, attribute: true))\"")
             }
             // The renderer lays out an `<image>` with neither `width` nor `height` at its picture's
-            // size, which for a drawing is now its raster's, up to 2,048 pixels. It is given the
-            // drawing's own size, as a browser gives it (#704). Where it gives one of the two, the
-            // renderer scales the other by the raster's aspect ratio, the drawing's to a pixel.
-            if let drawingSize, !node.attributes.contains(where: {
+            // size, which for a drawing, or a bitmap over 2,048 pixels, is now its raster's, 2,048
+            // pixels on the long side. It is given the picture's own size, as a browser gives it
+            // (#704, #862). Where it gives one of the two, the renderer scales the other by the
+            // raster's aspect ratio, the picture's to a pixel.
+            if let pictureSize, !node.attributes.contains(where: {
                 ($0.name == "width" || $0.name == "height") && [SVGNamespace.xlink, SVGNamespace.xml, ""].contains($0.namespace)
             }) {
-                write(" width=\"\(Double(drawingSize.width))\" height=\"\(Double(drawingSize.height))\"")
+                write(" width=\"\(Double(pictureSize.width))\" height=\"\(Double(pictureSize.height))\"")
             }
             if node.name == "style" {
                 write(">" + escape(css(node.textContent, sheet: true), attribute: false) + "</style>")
@@ -1879,7 +1881,7 @@ enum SVGContent {
         CGImageDestinationAddImage(destination, image, nil)
         guard CGImageDestinationFinalize(destination), output.length <= maximumInlinedImageBytes else { return nil }
         return SVGImagePreparation.Image(data: output as Data, pixels: image.width * image.height, diagnostics: localReport.diagnostics,
-                                         size: source.format == .svg ? source.pixelSize : nil)
+                                         size: source.format == .svg || scale < 1 ? source.pixelSize : nil)
     }
 
     /// The CSS of a `style` attribute, or of a stylesheet (`sheet`), without its `filter`

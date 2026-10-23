@@ -136,6 +136,11 @@ viewports and raster images. Not drawn:
   side, and inlined as PNG; the renderer never reads nested SVG. An `<image>` that gives neither
   `width` nor `height` is given the nested drawing's own size, as a browser lays it out, not the
   raster's. SVGZ is not read.
+- A bitmap is inlined as PNG with its EXIF orientation applied, downscaled to 2,048 pixels on its
+  long side where it is larger. An `<image>` that gives neither `width` nor `height` is laid out
+  at the bitmap's own pixel size, orientation applied, as a browser lays it out, and not at a
+  downscaled PNG's size. The renderer itself applies no orientation, so an image in a drawing
+  given to `SVGRenderer` without serializing is laid out and drawn as stored.
 - Text needs a font: the renderer exports Times New Roman, Arial and Courier New from the
   system for the default, serif, sans-serif and monospace families, and uses the faces a host
   gives `SVGRenderer` by family name. A nested SVG image draws with the defaults only.

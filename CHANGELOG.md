@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- An `<image>` whose picture is a bitmap over 2,048 pixels on its long side, and that gives
+  neither `width` nor `height`, is laid out at the bitmap's own size, its orientation applied, as
+  a browser lays it out, and not at the 2,048-pixel size of the PNG it is inlined as. Such an
+  image is drawn larger than before. Where its own size is over eight times the drawing's
+  canvas on either axis, the drawing is refused, as one that gives that size is
+  ([vocaro/EPUBLib#862](https://github.com/vocaro/EPUBLib/issues/862)).
+
 ## 0.1.2 — 2026-10-23
 
 Fixes to the screens and the serializer that came from EPUBLib in 0.1.0, for issues filed

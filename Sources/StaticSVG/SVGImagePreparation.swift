@@ -10,8 +10,9 @@ public final class SVGImagePreparation {
         let data: Data
         let pixels: Int
         let diagnostics: SVGDiagnostics
-        /// For a drawing, its own size in points, which an `<image>` that gives none takes; its
-        /// raster is larger or smaller. Nil for a bitmap.
+        /// The picture's own size, which an `<image>` that gives none takes, where its raster is
+        /// another: a drawing's in points, or a downscaled bitmap's in pixels, its orientation
+        /// applied. Nil for a bitmap inlined at its own size.
         var size: CGSize? = nil
     }
     /// The work one serialization, with every image nested in it, may do in all.

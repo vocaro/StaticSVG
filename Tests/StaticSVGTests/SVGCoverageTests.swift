@@ -1,4 +1,5 @@
 import CoreGraphics
+import ImageIO
 import UniformTypeIdentifiers
 import XCTest
 @testable import StaticSVG
@@ -138,7 +139,7 @@ final class SVGCoverageTests: XCTestCase {
 
     /// An `<image>` whose picture is a drawing, and that gives no `width` or `height`, takes the
     /// drawing's own size, from its `width` and `height` or else its `viewBox`, as a browser
-    /// gives it (SVG 2 §5.7), and not the size of the 2,048-pixel raster it is inlined as. With
+    /// gives it (SVG 2 §12.2), and not the size of the 2,048-pixel raster it is inlined as. With
     /// the raster's, the outer drawing was refused
     /// ([EPUBLib#704](https://github.com/vocaro/EPUBLib/issues/704)).
     func testANestedDrawingIsLaidOutAtItsOwnSizeNotItsRasters() throws {
@@ -158,6 +159,63 @@ final class SVGCoverageTests: XCTestCase {
                     XCTAssertEqual(SVGTest.rgba(image, x: inside.0, y: inside.1), lime, name)
                     XCTAssertEqual(SVGTest.rgba(image, x: outside.0, y: outside.1), clear, name)
                 }
+            }
+        }
+    }
+
+    /// An `<image>` whose picture is a bitmap over 2,048 pixels on its long side, and that gives
+    /// no `width` or `height`, takes the bitmap's own size, its EXIF orientation applied, as a
+    /// browser gives it (SVG 2 §12.2, CSS Images 3 §5.1), and not the size of the 2,048-pixel
+    /// raster it is inlined as ([EPUBLib#862](https://github.com/vocaro/EPUBLib/issues/862)). A
+    /// bitmap of 2,048 is inlined at its own size.
+    func testALargeBitmapIsLaidOutAtItsOwnSizeNotItsRasters() throws {
+        let lime = CGColor(srgbRed: 0, green: 1, blue: 0, alpha: 1)
+        func solid(_ width: Int, _ height: Int) -> CGImage {
+            SVGTest.bitmap(width: width, height: height) { context, rect in context.setFillColor(lime); context.fill(rect) }
+        }
+        // The bitmap from the archive and from a `data:` URL, with no size and with `given`.
+        func drawings(_ bitmap: Data, type: String, canvas: String, given: String, maxPixelSize: Int) throws -> [(CGImage, String)] {
+            let resources = MemoryResources(files: ["OPS/picture.\(type)": bitmap])
+            var drawn: [(CGImage, String)] = []
+            for reference in ["picture.\(type)", "data:image/\(type);base64," + bitmap.base64EncodedString()] {
+                for size in ["", given] {
+                    let name = "\(type) \(reference.prefix(20)) \(size.isEmpty ? "with no size" : size)"
+                    let markup = "<svg \(Self.ns) \(canvas)><image href='\(reference)' \(size)/></svg>"
+                    let bytes = try XCTUnwrap(SVGContent.serialize(try SVGTest.root(markup), resolve: { "OPS/" + $0 }, resources: resources), name)
+                    drawn.append((try XCTUnwrap(SVGImageSource.svg(bytes)?.decode(maxPixelSize: maxPixelSize), name), name))
+                }
+            }
+            return drawn
+        }
+        let wide = try XCTUnwrap(SVGTest.encode([solid(3000, 1000)], as: .png))
+        // Stored on its side, with the orientation that turns it upright, a quarter turn clockwise.
+        let turned = try XCTUnwrap(SVGTest.encode([solid(1000, 3000)], as: .jpeg, properties: [kCGImagePropertyOrientation: 6]))
+        // A 3,000-unit square drawn at 30 pixels: a point inside the bitmap's own size, one inside
+        // it outside the raster's 2,048 by 683, and one outside both.
+        for (bitmap, type) in [(wide, "png"), (turned, "jpeg")] {
+            for (image, name) in try drawings(bitmap, type: type, canvas: "width='3000' height='3000'",
+                                              given: "width='3000' height='1000'", maxPixelSize: 30) {
+                XCTAssertEqual(SVGTest.rgba(image, x: 5, y: 3)[3], 255, name)
+                XCTAssertEqual(SVGTest.rgba(image, x: 25, y: 8)[3], 255, name)
+                XCTAssertEqual(SVGTest.rgba(image, x: 25, y: 15)[3], 0, name)
+            }
+        }
+        // The image span bound charges the bitmap's own size, as where the element gives it: at
+        // most eight canvases wide.
+        let resources = MemoryResources(files: ["OPS/picture.png": wide])
+        for (width, drawn) in [(375, true), (374, false)] {
+            let markup = "<svg \(Self.ns) width='\(width)' height='125'><image href='picture.png'/></svg>"
+            let bytes = try XCTUnwrap(SVGContent.serialize(try SVGTest.root(markup), resolve: { "OPS/" + $0 }, resources: resources))
+            XCTAssertEqual(SVGImageSource.svg(bytes) != nil, drawn, "a canvas \(width) wide")
+        }
+        // At the bound and just past it, drawn at the drawing's own scale: a square's last column
+        // and the one after it. The canvas is tall enough for the image span bound.
+        for side in [2048, 2049] {
+            let square = try XCTUnwrap(SVGTest.encode([solid(side, side)], as: .png))
+            for (image, name) in try drawings(square, type: "png", canvas: "width='2050' height='257'",
+                                              given: "width='\(side)' height='\(side)'", maxPixelSize: 2050) {
+                XCTAssertEqual(SVGTest.rgba(image, x: side - 1, y: 128)[3], 255, "\(side) \(name)")
+                XCTAssertEqual(SVGTest.rgba(image, x: side, y: 128)[3], 0, "\(side) \(name)")
             }
         }
     }
