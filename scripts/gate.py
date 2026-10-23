@@ -36,7 +36,7 @@ except ImportError:
     raise SystemExit(2)
 
 # Floors: a suite that runs fewer tests fails. Lower one only in the commit that removes tests.
-SWIFT_TESTS = 155
+SWIFT_TESTS = 156
 GATE_TESTS = 23
 # Tests that skip unless a probe's inputs are given (doc/testing.md, Probes); any other skip fails.
 OPT_IN = {("SVGFontSizeCostTests", "testGeneratedProbeFixturesMatchScreen")}

@@ -13,6 +13,8 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import gate  # noqa: E402
 
+# The floor, so that raising it is one edit in gate.py.
+N = gate.SWIFT_TESTS
 PROBE_SKIPPED = ("Test Case '-[StaticSVGTests.SVGFontSizeCostTests testGeneratedProbeFixturesMatchScreen]' "
                  "skipped (0.001 seconds).\n")
 
@@ -27,30 +29,30 @@ def xctest_log(executed, failures=0, skipped=0, outcome="passed", cases=""):
 
 class SuiteJudgmentTests(unittest.TestCase):
     def test_a_full_suite_with_nothing_skipped_passes(self):
-        self.assertEqual(gate.xctest(0, xctest_log(155)), "155 tests passed, none skipped")
+        self.assertEqual(gate.xctest(0, xctest_log(N)), f"{N} tests passed, none skipped")
 
     def test_the_opt_in_probe_may_skip(self):
-        self.assertEqual(gate.xctest(0, xctest_log(155, skipped=1, cases=PROBE_SKIPPED)),
-                         "154 of 155 tests passed; skipped only the opt-in testGeneratedProbeFixturesMatchScreen")
+        self.assertEqual(gate.xctest(0, xctest_log(N, skipped=1, cases=PROBE_SKIPPED)),
+                         f"{N - 1} of {N} tests passed; skipped only the opt-in testGeneratedProbeFixturesMatchScreen")
         named = "Test case 'SVGFontSizeCostTests.testGeneratedProbeFixturesMatchScreen()' skipped on 'iPhone' (0.000 seconds)\n"
-        self.assertIn("skipped only the opt-in", gate.xctest(0, xctest_log(155, skipped=1, cases=named)))
+        self.assertIn("skipped only the opt-in", gate.xctest(0, xctest_log(N, skipped=1, cases=named)))
 
     def test_any_other_skipped_test_fails_the_suite(self):
         other = "Test Case '-[StaticSVGTests.SVGRenderingTests testDrawsAPath]' skipped (0.001 seconds).\n"
         with self.assertRaisesRegex(gate.Failed, "1 required tests skipped: SVGRenderingTests.testDrawsAPath"):
-            gate.xctest(0, xctest_log(155, skipped=2, cases=PROBE_SKIPPED + other))
+            gate.xctest(0, xctest_log(N, skipped=2, cases=PROBE_SKIPPED + other))
 
     def test_a_skip_the_log_does_not_name_fails_the_suite(self):
         with self.assertRaisesRegex(gate.Failed, "2 tests skipped, but the log names 1"):
-            gate.xctest(0, xctest_log(155, skipped=2, cases=PROBE_SKIPPED))
+            gate.xctest(0, xctest_log(N, skipped=2, cases=PROBE_SKIPPED))
 
     def test_a_failed_test_fails_the_suite(self):
-        with self.assertRaisesRegex(gate.Failed, "1 of 155 tests failed"):
-            gate.xctest(1, xctest_log(155, failures=1, outcome="failed"))
+        with self.assertRaisesRegex(gate.Failed, f"1 of {N} tests failed"):
+            gate.xctest(1, xctest_log(N, failures=1, outcome="failed"))
 
     def test_fewer_tests_than_the_floor_fail_the_suite(self):
-        with self.assertRaisesRegex(gate.Failed, "ran 154 tests, fewer than 155"):
-            gate.xctest(0, xctest_log(154))
+        with self.assertRaisesRegex(gate.Failed, f"ran {N - 1} tests, fewer than {N}"):
+            gate.xctest(0, xctest_log(N - 1))
 
     def test_a_build_failure_fails_and_a_silent_success_is_unmeasured(self):
         with self.assertRaisesRegex(gate.Failed, "exited 1 before reporting any test totals"):
@@ -93,7 +95,7 @@ class SimulatorTests(unittest.TestCase):
         commands = []
         def run(command, **_):
             commands.append([str(part) for part in command])
-            return 0, xctest_log(155)
+            return 0, xctest_log(N)
         with mock.patch.object(gate, "run", side_effect=run), \
                 mock.patch.object(gate, "BUILD", Path("/nonexistent/gate")), \
                 mock.patch.object(gate, "linked_renderer", return_value="linked the simulator slice"), \
@@ -105,7 +107,7 @@ class SimulatorTests(unittest.TestCase):
 
     def test_the_suite_runs_on_an_owned_device_of_the_named_runtime(self):
         result, commands, disposable = self.commands(mock.Mock(udid="UDID"))
-        self.assertEqual(result, "155 tests passed, none skipped; linked the simulator slice")
+        self.assertEqual(result, f"{N} tests passed, none skipped; linked the simulator slice")
         self.assertEqual(disposable.call_args.args, ("com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
                                                      "com.apple.CoreSimulator.SimRuntime.iOS-27-2"))
         self.assertEqual(commands[0][commands[0].index("-destination") + 1], "platform=iOS Simulator,id=UDID")
@@ -168,7 +170,7 @@ class RendererTests(unittest.TestCase):
         def linked(products, slice):
             checked.append((products, slice))
             return "linked"
-        with mock.patch.object(gate, "run", return_value=(0, xctest_log(155))), \
+        with mock.patch.object(gate, "run", return_value=(0, xctest_log(N))), \
                 mock.patch.object(gate, "BUILD", Path("/gate")), \
                 mock.patch.object(gate, "linked_renderer", side_effect=linked), \
                 mock.patch.object(gate, "runtime_identity", return_value=({"version": "27.2", "buildversion": "1",
@@ -189,7 +191,7 @@ class ParallelismTests(unittest.TestCase):
         commands = []
         def run(command, **_):
             commands.append([str(part) for part in command])
-            return 0, xctest_log(155)
+            return 0, xctest_log(N)
         steps = dict(gate.STEPS)
         with mock.patch.object(gate, "run", side_effect=run), \
                 mock.patch.object(gate, "BUILD", Path("/nonexistent/gate")), \

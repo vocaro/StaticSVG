@@ -26,7 +26,7 @@
         "test"
       ],
       "resource": "heavy",
-      "minimumTests": 155
+      "minimumTests": 156
     },
     "gate": {
       "command": [
@@ -34,7 +34,7 @@
         "scripts/gate.py"
       ],
       "resource": "heavy",
-      "minimumTests": 488,
+      "minimumTests": 491,
       "timeout": 14400
     }
   },

@@ -57,7 +57,7 @@ python3 scripts/eng run gate
 `swift test -c release -Xswiftc -enable-testing`, each in its own scratch directory under
 `.build/gate`, and with `xcodebuild test -scheme StaticSVG` on an iPhone 17 Pro simulator of the
 iOS 27.2 runtime, which it creates under a unique name, boots to `simctl bootstatus -b` and
-deletes by its identifier however the run ends. Each run must execute at least 155 tests with
+deletes by its identifier however the run ends. Each run must execute at least 156 tests with
 none failed. The only test allowed to skip is
 `SVGFontSizeCostTests.testGeneratedProbeFixturesMatchScreen`, the opt-in
 [font-size cost probe](#font-size-cost-probe), which needs generated inputs; any other skip
