@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.3 — 2026-10-23
+
+One fix, for an issue filed on EPUBLib, which takes it by pinning this release. Some drawings
+with a large bitmap are drawn larger, and a few are refused, as the entry says. The renderer
+binary and the public API are unchanged.
+
 - An `<image>` whose picture is a bitmap over 2,048 pixels on its long side, and that gives
   neither `width` nor `height`, is laid out at the bitmap's own size, its orientation applied, as
   a browser lays it out, and not at the 2,048-pixel size of the PNG it is inlined as. Such an
