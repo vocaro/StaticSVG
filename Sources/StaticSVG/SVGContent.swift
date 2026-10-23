@@ -1697,7 +1697,9 @@ enum SVGContent {
                 var value = attribute.value
                 if local == "href" || local == "src" {
                     let reference = value.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !reference.hasPrefix("#") {
+                    // By its byte, as the renderer reads it: a `#` that a combining mark follows
+                    // is one `Character` with the mark, and still begins a fragment (#641).
+                    if reference.utf8.first != UInt8(ascii: "#") {
                         // An image in a `data:` URL is read from the URL's own bytes, and is never
                         // resolved: it names no archive file and is no refused resource (#657).
                         let prepared: (Data, Int)?

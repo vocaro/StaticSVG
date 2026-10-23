@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- An `href` or `src` whose `#` a combining mark follows is kept as the fragment the renderer
+  reads, where the serializer took it for a file, dropped it and reported an image
+  ([vocaro/EPUBLib#641](https://github.com/vocaro/EPUBLib/issues/641)).
+
 ## 0.1.1 — 2026-10-22
 
 The renderer EPUBLib moved to after 0.1.0 was cut, as a release of its own: resvg reads no file

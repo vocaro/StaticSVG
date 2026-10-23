@@ -136,6 +136,22 @@ final class SVGCoverageTests: XCTestCase {
         XCTAssertEqual(report.diagnostics.counts, [.image: 2])
     }
 
+    /// The serializer finds a fragment's `#` by its byte, as the renderer does. One that a
+    /// combining mark follows is a single `Character` with the mark, and is still a fragment: the
+    /// reference is kept as written, not resolved as a file and dropped
+    /// ([EPUBLib#641](https://github.com/vocaro/EPUBLib/issues/641)).
+    func testAFragmentThatBeginsWithACombiningMarkIsKept() throws {
+        for element in ["use", "image"] {
+            let markup = "<svg \(Self.ns) width='10' height='10'><defs><rect id='&#x301;x' width='5' height='5'/></defs>"
+                + "<\(element) href='#&#x301;x' width='5' height='5'/></svg>"
+            let report = SVGDiagnosticsBox()
+            let bytes = try XCTUnwrap(SVGContent.serialize(try SVGTest.root(markup), resolve: { XCTFail("resolved \($0)"); return nil },
+                                                           resources: MemoryResources(), report: report), element)
+            XCTAssertNotNil(bytes.range(of: Data("href=\"#\u{301}x\"".utf8)), element)
+            XCTAssertEqual(report.diagnostics.counts, [:], element)
+        }
+    }
+
     // MARK: Robustness
 
     func testAdversarialSVGStaysBoundedAndNeverTraps() throws {
