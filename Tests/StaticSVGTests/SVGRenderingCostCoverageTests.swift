@@ -153,6 +153,36 @@ final class SVGRenderingCostCoverageTests: XCTestCase {
         XCTAssertTrue(try verdict(drawing).withinLimits, "source expansion alone cannot bound gradient copies")
         try fallback(drawing)
     }
+    /// An element's masks and clip paths are walked in document order. The screen keeps a node's
+    /// cost from the first path that reaches it at a depth, so in a dictionary's order, which
+    /// changes from run to run, its totals and the marker references it records changed too
+    /// ([EPUBLib#661](https://github.com/vocaro/EPUBLib/issues/661)). Here the mask `a` and the
+    /// clip path `x` lead to one another, which the renderer unlinks, and the clip path `y` leads
+    /// to `x`: whichever of `a` and `y` is walked first reaches `x` first.
+    func testResourcesAreWalkedInTheOrderOfTheDocument() throws {
+        let a = "<mask id='a'><rect width='1' height='1' clip-path='url(#x)'/></mask>"
+        let y = "<clipPath id='y'><rect width='1' height='1' clip-path='url(#x)'/></clipPath>"
+        let x = "<clipPath id='x'><rect width='1' height='1' mask='url(#a)'/></clipPath>"
+        let marker = "<marker id='m' mask='url(#a)'><rect width='1' height='1' mask='inherit'/></marker>"
+        for definitions in [a + y, y + a] {
+            // A group keeps the definitions deeper than the shape's references reach them, so the
+            // walk of the tree has not already costed them at that depth.
+            let drawing = svg("<defs><g>\(definitions)\(x)\(marker)</g></defs><rect width='5' height='5' mask='url(#a)' clip-path='url(#y)'/>")
+            // Each parse makes new nodes, which a dictionary keyed by them orders anew.
+            let verdicts = try (0..<16).map { _ in try verdict(drawing) }
+            let first = try XCTUnwrap(verdicts.first)
+            for verdict in verdicts.dropFirst() {
+                XCTAssertEqual(verdict.withinLimits, first.withinLimits)
+                XCTAssertEqual(verdict.expandedBytes, first.expandedBytes)
+                XCTAssertEqual(verdict.markerResourceBytes, first.markerResourceBytes)
+                XCTAssertEqual(verdict.markerResourceReferences.map { [$0.source.order, $0.target.order] },
+                               first.markerResourceReferences.map { [$0.source.order, $0.target.order] })
+            }
+            let pairs = first.markerResourceReferences.map { [$0.source.order, $0.target.order] }
+            XCTAssertEqual(pairs, pairs.sorted { $0.lexicographicallyPrecedes($1) })
+            XCTAssertEqual(pairs.count, 4, "the marker's own mask, and every resource named, which its content inherits")
+        }
+    }
     func testMarkerInheritedResourcesPayPerInstanceIncludingGradientCopies() throws {
         let content = String(repeating: "<rect width='1' height='1'/>", count: 5_000)
         let marker = "<marker id='m' mask='url(#r)'><rect width='1' height='1' mask='inherit'/></marker>"

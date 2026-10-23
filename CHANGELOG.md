@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The rendering cost screen walks an element's masks and clip paths in document order, so its
+  totals, and its verdict on a drawing near a limit, no longer change from run to run
+  ([vocaro/EPUBLib#661](https://github.com/vocaro/EPUBLib/issues/661)).
+
 - Serializing a drawing drops an element's `xlink:href` along with the unprefixed `href` it
   cannot use, so that serializing never changes which reference the renderer follows
   ([vocaro/EPUBLib#316](https://github.com/vocaro/EPUBLib/issues/316)).

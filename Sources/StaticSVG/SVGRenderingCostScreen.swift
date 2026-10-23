@@ -160,7 +160,11 @@ enum SVGRenderingCostScreen {
                     if target.role.admits(found.name) { targets[ObjectIdentifier(found)] = found }
                 }
             }
-            resources[ObjectIdentifier(node)] = Array(targets.values)
+            // In document order, not the dictionary's, which changes from run to run: `cost` keeps
+            // a node's cost from the first path that reaches it at a depth, so the order the
+            // resources are walked in is part of the totals, and of which marker references are
+            // recorded (#661).
+            resources[ObjectIdentifier(node)] = targets.values.sorted { $0.order < $1.order }
         }
         // Charge every resource reference, including user-space resources. usvg caches only
         // successful nonempty conversions; geometry rounding, styles or a failed nested resource
