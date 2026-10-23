@@ -17,9 +17,20 @@ to every command and never the booted device, as the shared rules that
 `python3 scripts/eng instructions` prints require:
 
 ```sh
-udid=$(xcrun simctl create StaticSVG-test-$$ "iPhone 17 Pro")
-xcodebuild test -scheme StaticSVG -destination "id=$udid"
-xcrun simctl delete "$udid"
+udid=$(xcrun simctl create "StaticSVG-test-$(uuidgen)" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro \
+  com.apple.CoreSimulator.SimRuntime.iOS-27-2)
+trap 'xcrun simctl shutdown "$udid" 2>/dev/null; xcrun simctl delete "$udid"' EXIT
+xcrun simctl boot "$udid"
+xcrun simctl bootstatus "$udid" -b
+xcodebuild test -scheme StaticSVG -destination "platform=iOS Simulator,id=$udid"
+```
+
+On the owner's shared host, builds and tests go through admission. The `tests` lane runs
+`swift test`; arguments after `--` go to it, such as a filter or the optimized build's flags:
+
+```sh
+python3 scripts/eng run tests
+python3 scripts/eng run tests -- --filter SVGDocumentTests
 ```
 
 A filtered run proves something only when it ran tests: check the executed count. Some cases
@@ -30,6 +41,40 @@ blaming a change.
 The renderer is a release asset, so a checkout tests the released framework unless
 `STATICSVG_LOCAL_RESVG=1` points `Package.swift` at a local build in `Resvg/Resvg.xcframework`
 ([maintenance](maintenance.md#rebuilding-the-renderer)).
+
+## The release gate
+
+A release is tagged only on a commit whose gate passed ([maintenance](maintenance.md#releasing)).
+The `gate` lane runs, at one commit and through admission, everything this page asks of a
+release:
+
+```sh
+python3 scripts/eng run gate
+```
+
+`scripts/gate.py` runs its own tests, `python3 scripts/eng docs check` and
+`python3 scripts/eng spelling`, then the suite three times: with `swift test`, with
+`swift test -c release -Xswiftc -enable-testing`, each in its own scratch directory under
+`.build/gate`, and with `xcodebuild test -scheme StaticSVG` on an iPhone 17 Pro simulator of the
+iOS 27.2 runtime, which it creates under a unique name, boots to `simctl bootstatus -b` and
+deletes by its identifier however the run ends. Each run must execute at least 155 tests with
+none failed. The only test allowed to skip is
+`SVGFontSizeCostTests.testGeneratedProbeFixturesMatchScreen`, the opt-in
+[font-size cost probe](#font-size-cost-probe), which needs generated inputs; any other skip
+fails the run. Admission counts the gate as one job, so its builds take two jobs and the
+simulator runs its tests in one process.
+
+The gate exits 0 only when every step passed and 1 when any failed. It exits 3, never 0, when
+none failed but one is unmeasured: the runtime is missing, the simulator did not finish booting
+within ten minutes, a step gave no result within its hang bound, or an `eng` check could not
+run, which it reports by exiting 2, as it does when it finds no toolkit. A step that changes the
+checkout fails the gate. The lane's log, `.build/engineering/gate/run.log`, ends with the
+commit, the renderer the suites linked and each step's outcome.
+
+The gate finds the toolkit as `scripts/eng` does, from a session's worktree too, and runs its
+checks against that checkout. From a clone that has no `apple-engineering` beside it or beside
+its main checkout, set `VOCARO_ENGINEERING_ROOT`. The runtime is named in `scripts/gate.py`;
+move it in a commit of its own when the host's Xcode moves on.
 
 ## What the tests cover
 

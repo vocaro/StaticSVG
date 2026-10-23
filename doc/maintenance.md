@@ -84,6 +84,12 @@ it; the diff then shows which.
 
 ## Releasing
 
+A release follows the toolkit's
+[releasing guide](https://github.com/vocaro/apple-engineering/blob/main/guides/releasing.md). Its
+gate is the `gate` lane, `python3 scripts/eng run gate` ([testing](testing.md#the-release-gate)),
+and only a commit whose gate passed is tagged. A release that changes the renderer binary also
+publishes it:
+
 1. With the framework in `Resvg/Resvg.xcframework` and `checksums.json` matching it, write the
    release asset and print its checksum:
 
@@ -96,11 +102,18 @@ it; the diff then shows which.
    `swift package compute-checksum` for the zip.
 2. In `Package.swift`, name the release's asset URL and that checksum. Add the release to
    [CHANGELOG.md](../CHANGELOG.md), with the library checksums when they changed.
-3. Merge, tag the merge commit with the version, and publish a GitHub release for the tag with
-   the zip as its asset, named `Resvg.xcframework.zip`.
-4. From a fresh clone of the tag, with no local framework, resolve and run the tests on the Mac
-   and on an iOS simulator ([testing](testing.md)). SwiftPM fetches the asset and checks its
-   checksum; a mismatch fails the resolve.
+3. Run the gate on the release commit with `STATICSVG_LOCAL_RESVG=1`, so that its suites link
+   the framework the zip holds: the asset `Package.swift` now names is not published yet.
+
+   ```sh
+   STATICSVG_LOCAL_RESVG=1 python3 scripts/eng run gate
+   ```
+
+4. Push the release commit to `main`, tag it with the version, and publish a GitHub release for
+   the tag with the zip as its asset, named `Resvg.xcframework.zip`.
+5. From a fresh clone of the tag, with no local framework, run the gate again. SwiftPM fetches
+   the asset and checks its checksum; a mismatch fails the resolve. Set
+   `VOCARO_ENGINEERING_ROOT` to the toolkit's checkout when the clone is not beside it.
 
 Never replace or delete a published asset; a changed binary is a new release.
 

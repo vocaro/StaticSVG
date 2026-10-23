@@ -19,6 +19,23 @@
         "check"
       ],
       "resource": "light"
+    },
+    "tests": {
+      "command": [
+        "swift",
+        "test"
+      ],
+      "resource": "heavy",
+      "minimumTests": 155
+    },
+    "gate": {
+      "command": [
+        "python3",
+        "scripts/gate.py"
+      ],
+      "resource": "heavy",
+      "minimumTests": 483,
+      "timeout": 14400
     }
   },
   "spelling": {
