@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- An `<image>` whose picture is an SVG, and that gives neither `width` nor `height`, is laid
+  out at that drawing's own size, as a browser lays it out, and not at the 2,048-pixel size of
+  the raster it is inlined as, which had the outer drawing refused
+  ([vocaro/EPUBLib#704](https://github.com/vocaro/EPUBLib/issues/704)).
+
 - The rendering cost screen walks an element's masks and clip paths in document order, so its
   totals, and its verdict on a drawing near a limit, no longer change from run to run
   ([vocaro/EPUBLib#661](https://github.com/vocaro/EPUBLib/issues/661)).

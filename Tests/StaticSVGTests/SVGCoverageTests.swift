@@ -136,6 +136,32 @@ final class SVGCoverageTests: XCTestCase {
         XCTAssertEqual(report.diagnostics.counts, [.image: 2])
     }
 
+    /// An `<image>` whose picture is a drawing, and that gives no `width` or `height`, takes the
+    /// drawing's own size, from its `width` and `height` or else its `viewBox`, as a browser
+    /// gives it (SVG 2 §5.7), and not the size of the 2,048-pixel raster it is inlined as. With
+    /// the raster's, the outer drawing was refused
+    /// ([EPUBLib#704](https://github.com/vocaro/EPUBLib/issues/704)).
+    func testANestedDrawingIsLaidOutAtItsOwnSizeNotItsRasters() throws {
+        let lime: [UInt8] = [0, 255, 0, 255], clear: [UInt8] = [0, 0, 0, 0]
+        let square = "<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'><rect width='10' height='10' fill='lime'/></svg>"
+        let strip = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 5'><rect width='10' height='5' fill='lime'/></svg>"
+        // A point inside the drawing as given its own size, and one outside it inside the raster's.
+        for (inner, inside, outside, given) in [(square, (5, 5), (15, 15), "width='10' height='10'"), (strip, (5, 2), (5, 8), "width='10' height='5'")] {
+            let resources = MemoryResources(files: ["OPS/inner.svg": Data(inner.utf8)], mediaTypes: ["OPS/inner.svg": "image/svg+xml"])
+            let data = "data:image/svg+xml," + (try XCTUnwrap(inner.addingPercentEncoding(withAllowedCharacters: .alphanumerics)))
+            for reference in ["inner.svg", data] {
+                for size in ["", given] {
+                    let name = "\(reference.prefix(20)) \(size.isEmpty ? "with no size" : size)"
+                    let markup = "<svg \(Self.ns) width='20' height='20'><image href='\(reference)' \(size)/></svg>"
+                    let bytes = try XCTUnwrap(SVGContent.serialize(try SVGTest.root(markup), resolve: { "OPS/" + $0 }, resources: resources), name)
+                    let image = try XCTUnwrap(SVGImageSource.svg(bytes)?.decode(maxPixelSize: 20), name)
+                    XCTAssertEqual(SVGTest.rgba(image, x: inside.0, y: inside.1), lime, name)
+                    XCTAssertEqual(SVGTest.rgba(image, x: outside.0, y: outside.1), clear, name)
+                }
+            }
+        }
+    }
+
     /// The serializer finds a fragment's `#` by its byte, as the renderer does. One that a
     /// combining mark follows is a single `Character` with the mark, and is still a fragment: the
     /// reference is kept as written, not resolved as a file and dropped

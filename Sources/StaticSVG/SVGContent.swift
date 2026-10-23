@@ -1684,6 +1684,8 @@ enum SVGContent {
             // written. It is left out, so that dropping an `href` this cannot use never hands the
             // reference to the `xlink:href` it overrode (#316).
             let hasHref = node.attribute("href") != nil
+            // The size of the drawing an `<image>` inlines as PNG, from the `href` the renderer reads.
+            var drawingSize: CGSize?
             for attribute in node.attributes {
                 let name: String
                 switch attribute.namespace {
@@ -1708,7 +1710,7 @@ enum SVGContent {
                     if reference.utf8.first != UInt8(ascii: "#") {
                         // An image in a `data:` URL is read from the URL's own bytes, and is never
                         // resolved: it names no archive file and is no refused resource (#657).
-                        let prepared: (Data, Int)?
+                        let prepared: (Data, Int, CGSize?)?
                         if node.name != "image" {
                             prepared = nil
                         } else if DataURL.isDataURL(reference) {
@@ -1723,7 +1725,7 @@ enum SVGContent {
                         } else {
                             prepared = nil
                         }
-                        guard let (data, pixels) = prepared,
+                        guard let (data, pixels, size) = prepared,
                               inlined + data.count <= maximumInlinedImageBytes,
                               pixels <= maximumTotalImagePixels - imagePixels else {
                             report?.diagnostics.record(.image)
@@ -1731,6 +1733,7 @@ enum SVGContent {
                         }
                         inlined += data.count; imagePixels += pixels
                         value = "data:image/png;base64," + data.base64EncodedString()
+                        if attribute.name == "href", attribute.namespace != SVGNamespace.xml { drawingSize = size }
                     }
                 } else if unsafeCSS(value) {
                     report?.diagnostics.record(.attribute)
@@ -1739,6 +1742,15 @@ enum SVGContent {
                 if local == "font-family" { value = family(value) }
                 if local == "style" { value = css(value, sheet: false) }
                 write(" \(name)=\"\(escape(value, attribute: true))\"")
+            }
+            // The renderer lays out an `<image>` with neither `width` nor `height` at its picture's
+            // size, which for a drawing is now its raster's, up to 2,048 pixels. It is given the
+            // drawing's own size, as a browser gives it (#704). Where it gives one of the two, the
+            // renderer scales the other by the raster's aspect ratio, the drawing's to a pixel.
+            if let drawingSize, !node.attributes.contains(where: {
+                ($0.name == "width" || $0.name == "height") && [SVGNamespace.xlink, SVGNamespace.xml, ""].contains($0.namespace)
+            }) {
+                write(" width=\"\(Double(drawingSize.width))\" height=\"\(Double(drawingSize.height))\"")
             }
             if node.name == "style" {
                 write(">" + escape(css(node.textContent, sheet: true), attribute: false) + "</style>")
@@ -1760,7 +1772,7 @@ enum SVGContent {
     private static func boundedResourceImage(at path: String, resources: any SVGResourceProvider,
                                              fontAliases: [String: String], report: SVGDiagnosticsBox?,
                                              visited: Set<String>, preparation: SVGImagePreparation,
-                                             maximumBytes: Int, maximumPixels: Int) -> (Data, Int)? {
+                                             maximumBytes: Int, maximumPixels: Int) -> (Data, Int, CGSize?)? {
         let prepared = preparation.request(at: path, ancestors: visited, fonts: fontAliases,
             maximumBytes: maximumBytes, maximumPixels: maximumPixels) {
             for candidate in resources.imageCandidates(for: path) {
@@ -1778,7 +1790,7 @@ enum SVGContent {
         }
         guard let prepared else { return nil }
         SVGImagePreparation.replay(prepared.diagnostics, into: report)
-        return (prepared.data, prepared.pixels)
+        return (prepared.data, prepared.pixels, prepared.size)
     }
 
     /// The image a `data:` URL holds, read by the data: URL processor (`DataURL`) and prepared
@@ -1789,7 +1801,7 @@ enum SVGContent {
     private static func boundedDataImage(_ reference: String, resources: (any SVGResourceProvider)?,
                                          fontAliases: [String: String], report: SVGDiagnosticsBox?,
                                          visited: Set<String>, preparation: SVGImagePreparation,
-                                         maximumBytes: Int, maximumPixels: Int) -> (Data, Int)? {
+                                         maximumBytes: Int, maximumPixels: Int) -> (Data, Int, CGSize?)? {
         // A key no archive path can be: a path has no NUL.
         let key = "\u{0}data:" + SHA256.hash(data: Data(reference.utf8)).map { String(format: "%02x", $0) }.joined()
         var mediaType = ""
@@ -1805,7 +1817,7 @@ enum SVGContent {
         }
         guard let prepared else { return nil }
         SVGImagePreparation.replay(prepared.diagnostics, into: report)
-        return (prepared.data, prepared.pixels)
+        return (prepared.data, prepared.pixels, prepared.size)
     }
 
     /// An image's bytes as a drawing inlines them: a bitmap ImageIO reads, or an SVG sanitized
@@ -1855,7 +1867,8 @@ enum SVGContent {
               let destination = CGImageDestinationCreateWithData(output, UTType.png.identifier as CFString, 1, nil) else { return nil }
         CGImageDestinationAddImage(destination, image, nil)
         guard CGImageDestinationFinalize(destination), output.length <= maximumInlinedImageBytes else { return nil }
-        return SVGImagePreparation.Image(data: output as Data, pixels: image.width * image.height, diagnostics: localReport.diagnostics)
+        return SVGImagePreparation.Image(data: output as Data, pixels: image.width * image.height, diagnostics: localReport.diagnostics,
+                                         size: source.format == .svg ? source.pixelSize : nil)
     }
 
     /// The CSS of a `style` attribute, or of a stylesheet (`sheet`), without its `filter`

@@ -133,7 +133,9 @@ viewports and raster images. Not drawn:
   attribute whose CSS could reach outside: removed and counted.
 - `<tref>`, which SVG 2 removed: the drawing is refused.
 - An SVG image nested in a drawing is drawn by StaticSVG first, at most 2,048 pixels on its long
-  side, and inlined as PNG; the renderer never reads nested SVG. SVGZ is not read.
+  side, and inlined as PNG; the renderer never reads nested SVG. An `<image>` that gives neither
+  `width` nor `height` is given the nested drawing's own size, as a browser lays it out, not the
+  raster's. SVGZ is not read.
 - Text needs a font: the renderer exports Times New Roman, Arial and Courier New from the
   system for the default, serif, sans-serif and monospace families, and uses the faces a host
   gives `SVGRenderer` by family name. A nested SVG image draws with the defaults only.

@@ -10,6 +10,9 @@ public final class SVGImagePreparation {
         let data: Data
         let pixels: Int
         let diagnostics: SVGDiagnostics
+        /// For a drawing, its own size in points, which an `<image>` that gives none takes; its
+        /// raster is larger or smaller. Nil for a bitmap.
+        var size: CGSize? = nil
     }
     /// The work one serialization, with every image nested in it, may do in all.
     public struct Limits: Equatable, Sendable {
