@@ -29,7 +29,7 @@ Requires iOS/iPadOS or macOS 27+, Swift 6.2 and Xcode 27.
 ## Installation
 
 ```swift
-.package(url: "https://github.com/vocaro/StaticSVG.git", exact: "0.1.1"),
+.package(url: "https://github.com/vocaro/StaticSVG.git", exact: "0.1.2"),
 ```
 
 and `.product(name: "StaticSVG", package: "StaticSVG")` in the target that draws.

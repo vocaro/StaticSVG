@@ -2,29 +2,31 @@
 
 ## Unreleased
 
+## 0.1.2 — 2026-10-23
+
+Fixes to the screens and the serializer that came from EPUBLib in 0.1.0, for issues filed
+there; EPUBLib takes them by pinning this release. Some drawings are drawn or refused
+differently, as each entry says. The renderer binary and the public API are 0.1.1's, unchanged.
+
 - The marker bound no longer refuses a rounded rectangle under `marker-mid` for a radius past
   half its side, which the renderer clamps, or a drawing with markers for a long declaration the
   renderer copies onto no element, such as an embedded font's in an `@font-face` rule
   ([vocaro/EPUBLib#274](https://github.com/vocaro/EPUBLib/issues/274)).
-
 - An `<image>` whose picture is an SVG, and that gives neither `width` nor `height`, is laid
   out at that drawing's own size, as a browser lays it out, and not at the 2,048-pixel size of
   the raster it is inlined as, which had the outer drawing refused
   ([vocaro/EPUBLib#704](https://github.com/vocaro/EPUBLib/issues/704)).
-
 - The rendering cost screen walks an element's masks and clip paths in document order, so its
   totals, and its verdict on a drawing near a limit, no longer change from run to run
   ([vocaro/EPUBLib#661](https://github.com/vocaro/EPUBLib/issues/661)).
-
-- Serializing a drawing drops an element's `xlink:href` along with the unprefixed `href` it
-  cannot use, so that serializing never changes which reference the renderer follows
+- Serializing a drawing leaves out an element's `xlink:href` where it has an unprefixed `href`,
+  which the renderer follows in its place: dropping an `href` it cannot use no longer hands the
+  reference to the `xlink:href`, and serializing never changes which reference is followed
   ([vocaro/EPUBLib#316](https://github.com/vocaro/EPUBLib/issues/316)).
-
 - The screens link a drawing's own class rules to the elements the renderer styles, comparing
   class names by their bytes and splitting class lists at spaces alone: they no longer refuse
   for a rule the renderer does not apply, or miss one it does
   ([vocaro/EPUBLib#752](https://github.com/vocaro/EPUBLib/issues/752)).
-
 - An `href` or `src` whose `#` a combining mark follows is kept as the fragment the renderer
   reads, where the serializer took it for a file, dropped it and reported an image
   ([vocaro/EPUBLib#641](https://github.com/vocaro/EPUBLib/issues/641)).
