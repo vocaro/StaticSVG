@@ -31,7 +31,7 @@ sys.path.insert(0, str(TOOLKIT / "src/python"))
 try:
     from vocaro_engineering.simulators import lifecycle  # noqa: E402
 except ImportError:
-    print(f"gate: no shared toolkit at {TOOLKIT}. Clone vocaro/apple-engineering beside this project's main "
+    print(f"gate: no shared toolkit at {TOOLKIT}. Clone vocaro/vocaro-engineering beside this project's main "
           "checkout or set VOCARO_ENGINEERING_ROOT.", file=sys.stderr)
     raise SystemExit(2)
 

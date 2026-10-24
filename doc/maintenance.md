@@ -85,7 +85,7 @@ it; the diff then shows which.
 ## Releasing
 
 A release follows the toolkit's
-[releasing guide](https://github.com/vocaro/apple-engineering/blob/main/guides/releasing.md). Its
+[releasing guide](https://github.com/vocaro/vocaro-engineering/blob/main/guides/releasing.md). Its
 gate is the `gate` lane, `python3 scripts/eng run gate` ([testing](testing.md#the-release-gate)),
 and only a commit whose gate passed is tagged. A release that changes the renderer binary also
 publishes it:

@@ -3,7 +3,7 @@
   "name": "StaticSVG",
   "repository": "vocaro/StaticSVG",
   "toolkit": {
-    "path": "../apple-engineering"
+    "path": "../vocaro-engineering"
   },
   "capabilities": [
     "simulator-disposable",

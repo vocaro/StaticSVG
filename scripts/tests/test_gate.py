@@ -72,7 +72,7 @@ class SuiteJudgmentTests(unittest.TestCase):
 
 class EngCheckTests(unittest.TestCase):
     def test_a_check_that_cannot_run_is_unmeasured_and_one_that_finds_problems_fails(self):
-        missing = "eng: Shared toolkit missing at /private/tmp/apple-engineering.\n"
+        missing = "eng: Shared toolkit missing at /private/tmp/vocaro-engineering.\n"
         with mock.patch.object(gate, "run", return_value=(2, missing)):
             with self.assertRaisesRegex(gate.Unmeasured, "`eng docs check` could not run: eng: Shared toolkit missing"):
                 gate.eng_check("docs", "check")

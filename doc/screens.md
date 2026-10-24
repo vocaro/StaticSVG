@@ -217,7 +217,7 @@ The preflight for [#230](https://github.com/vocaro/EPUBLib/issues/230),
 [#251](https://github.com/vocaro/EPUBLib/issues/251), and
 [#375](https://github.com/vocaro/EPUBLib/issues/375) checks hostile text without
 handing it to resvg. The checked Rust boundary still handles renderer panics
-([renderer containment](https://github.com/vocaro/apple-engineering/blob/main/knowledge/apple/document-parsing.md#native-renderer-containment-needs-more-than-a-byte-limit));
+([renderer containment](https://github.com/vocaro/vocaro-engineering/blob/main/knowledge/apple/document-parsing.md#native-renderer-containment-needs-more-than-a-byte-limit));
 these bounds stop inputs whose expensive work would not panic.
 
 `SVGGeometryCostScreen` reads path numbers with SVG's scientific notation,
